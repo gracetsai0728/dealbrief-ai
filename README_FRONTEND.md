@@ -9,6 +9,9 @@ DealBrief AI is an AI-powered sales meeting preparation platform. This frontend 
 ✅ AI-Generated Sales Briefs  
 ✅ Talking Points & Suggested Questions  
 ✅ Engagement Log Tracking  
+✅ Customer and Usage CSV Imports
+✅ Customer Intelligence Refresh
+✅ Database-backed Admin Delete Operations
 ✅ Responsive Design
 
 ## Project Structure
@@ -69,24 +72,14 @@ npm run preview
 
 ## API Integration
 
-The current implementation uses mock data for demonstration. To integrate with a backend:
-
-1. Update the `handleGenerate` function in `App.jsx`
-2. Replace the mock data generation with an actual API call:
+The frontend is integrated with the Flask API through `src/api.js`. The shared
+request helper unwraps the API's `{ "data": ... }` response envelope and exposes
+functions for customers, products, usage, imports, intelligence, briefs,
+engagements, and deletes.
 
 ```javascript
-const response = await fetch("/api/generate-brief", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    customer,
-    meetingType,
-    product,
-    deliverable,
-    notes,
-  }),
-});
-const brief = await response.json();
+const customers = await fetchCustomers()
+const dashboard = await fetchCustomerDashboard(customers[0].id)
 ```
 
 ## Environment Variables
@@ -129,8 +122,8 @@ Props:
 
 ## Future Enhancements
 
-- User authentication & admin dashboard
-- File upload (PDF, CSV) support
+- User authentication and authorization
+- PDF import support
 - Real-time Salesforce data integration
 - Export briefs to PDF
 - Collaboration features

@@ -1,96 +1,69 @@
 import { API_BASE_URL } from './constants'
 
-/**
- * Generate a brief from the backend API
- * @param {Object} context - The meeting context
- * @param {string} context.customer - Customer ID
- * @param {string} context.meetingType - Meeting type
- * @param {string} context.product - Product
- * @param {string} context.deliverable - Deliverable format
- * @param {string} context.notes - Additional notes
- * @returns {Promise<Object>} The generated brief
- */
-export async function generateBrief(context) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/generate-brief`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(context),
-    })
+async function request(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+    },
+  })
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`)
-    }
-
-    return await response.json()
-  } catch (error) {
-    console.error('Failed to generate brief:', error)
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    const message = payload?.error?.message || `API request failed (${response.status})`
+    const error = new Error(message)
+    error.code = payload?.error?.code
+    error.status = response.status
+    error.details = payload?.error?.details
     throw error
   }
+  return payload?.data
 }
 
-/**
- * Fetch available customers from the backend
- * @returns {Promise<Array>} Array of customers
- */
-export async function fetchCustomers() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/customers`)
+export const fetchCustomers = () => request('/customers')
+export const fetchProducts = () => request('/products')
+export const fetchUsage = () => request('/usage')
+export const fetchEngagementLog = () => request('/engagement-log')
+export const fetchImportJobs = () => request('/imports')
+export const fetchCustomerDashboard = (customerId) =>
+  request(`/customers/${customerId}/dashboard`)
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`)
-    }
+export const generateBrief = (context) =>
+  request('/generate-brief', {
+    method: 'POST',
+    body: JSON.stringify(context),
+  })
 
-    return await response.json()
-  } catch (error) {
-    console.error('Failed to fetch customers:', error)
-    throw error
-  }
-}
+export const saveBrief = (engagementId) =>
+  request('/engagement-log', {
+    method: 'POST',
+    body: JSON.stringify({ engagementId }),
+  })
 
-/**
- * Save a brief to the engagement log
- * @param {Object} brief - The brief to save
- * @returns {Promise<Object>} The saved brief with ID
- */
-export async function saveBrief(brief) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/engagement-log`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(brief),
-    })
+export const importCustomers = (filename, rows) =>
+  request('/imports/customers', {
+    method: 'POST',
+    body: JSON.stringify({ filename, rows }),
+  })
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`)
-    }
+export const importUsage = (filename, rows) =>
+  request('/imports/usage', {
+    method: 'POST',
+    body: JSON.stringify({ filename, rows }),
+  })
 
-    return await response.json()
-  } catch (error) {
-    console.error('Failed to save brief:', error)
-    throw error
-  }
-}
+export const refreshIntelligence = (customerId, period = {}) =>
+  request(`/customers/${customerId}/intelligence/refresh`, {
+    method: 'POST',
+    body: JSON.stringify(period),
+  })
 
-/**
- * Fetch engagement log history
- * @returns {Promise<Array>} Array of previous briefs
- */
-export async function fetchEngagementLog() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/engagement-log`)
+export const deleteCustomer = (customerId) =>
+  request(`/customers/${customerId}`, { method: 'DELETE' })
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`)
-    }
+export const deleteUsage = (usageId) =>
+  request(`/usage/${usageId}`, { method: 'DELETE' })
 
-    return await response.json()
-  } catch (error) {
-    console.error('Failed to fetch engagement log:', error)
-    throw error
-  }
-}
+export const deleteEngagement = (engagementId) =>
+  request(`/engagement-log/${engagementId}`, { method: 'DELETE' })

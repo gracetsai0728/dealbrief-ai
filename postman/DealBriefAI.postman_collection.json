@@ -1,0 +1,519 @@
+{
+  "info": {
+    "_postman_id": "0dd30db0-c785-4a0d-b16e-04c6a4b55101",
+    "name": "DealBrief AI - Complete API",
+    "description": "Run folders from top to bottom. The workflow creates Postman demo records, verifies database-backed reads, and then deletes or archives them.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:3000/api" },
+    { "key": "customerId", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "usageId", "value": "" },
+    { "key": "engagementId", "value": "" },
+    { "key": "importJobId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 Health and reference data",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Database is reachable', () => pm.expect(pm.response.json().data.status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Products returned', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.be.an('array').that.is.not.empty; });",
+                  "const product = pm.response.json().data.find(item => item.name === 'CRM Platform') || pm.response.json().data[0];",
+                  "pm.collectionVariables.set('productId', product.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/customers"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer array returned', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Imports",
+      "item": [
+        {
+          "name": "Import customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"postman-customers.json\",\n  \"rows\": [\n    {\n      \"name\": \"Postman Demo Customer\",\n      \"industry\": \"Software\",\n      \"salesforceAccountId\": \"POSTMAN-DEMO-001\",\n      \"opportunityStage\": \"Discovery\",\n      \"renewalDate\": \"2027-01-15\",\n      \"status\": \"active\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/imports/customers"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Import completed', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().data.status).to.eql('completed'); });",
+                  "pm.collectionVariables.set('importJobId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Find imported customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/customers?search=Postman%20Demo"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Imported customer is queryable', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.have.length(1); });",
+                  "pm.collectionVariables.set('customerId', pm.response.json().data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get import job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/imports/{{importJobId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Import audit row exists', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get('importJobId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Import usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"postman-usage.json\",\n  \"rows\": [\n    {\n      \"customerId\": \"{{customerId}}\",\n      \"productId\": \"{{productId}}\",\n      \"snapshotDate\": \"2026-07-20\",\n      \"activeUsers\": 80,\n      \"licensedSeats\": 100,\n      \"licenseUtilization\": 80,\n      \"usageGrowth\": 12.5,\n      \"featureAdoption\": { \"Reporting\": 55 }\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/imports/usage"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Usage import completed', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().data.failedRows).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List imports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/imports"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Import history returned', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.be.an('array').that.is.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List customer usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/usage?customerId={{customerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Usage is stored', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.have.length(1); });",
+                  "pm.collectionVariables.set('usageId', pm.response.json().data[0].id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Intelligence",
+      "item": [
+        {
+          "name": "Refresh intelligence (calls OpenAI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodStart\": \"2026-07-01\",\n  \"periodEnd\": \"2026-07-31\"\n}"
+            },
+            "url": "{{baseUrl}}/customers/{{customerId}}/intelligence/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Intelligence created', () => pm.response.to.have.status(201));",
+                  "pm.test('Structured actions returned', () => pm.expect(pm.response.json().data.nextBestActions).to.be.an('array').that.is.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get latest intelligence",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/customers/{{customerId}}/intelligence/latest"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Latest snapshot persisted', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.generationStatus).to.eql('completed'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List intelligence history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/customers/{{customerId}}/intelligence"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('History contains snapshot', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.be.an('array').that.is.not.empty; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Briefs and engagement",
+      "item": [
+        {
+          "name": "Generate call brief (calls OpenAI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"productId\": \"{{productId}}\",\n  \"meetingType\": \"qbr\",\n  \"deliverableType\": \"call_brief\",\n  \"notes\": \"Focus on usage value and reporting adoption.\"\n}"
+            },
+            "url": "{{baseUrl}}/generate-brief"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Draft generated', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().data.status).to.eql('draft'); });",
+                  "pm.collectionVariables.set('engagementId', pm.response.json().data.engagementId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get draft engagement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/engagement-log/{{engagementId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Draft database row exists', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.status).to.eql('draft'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Save brief to timeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"engagementId\": \"{{engagementId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/engagement-log"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Engagement saved', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.status).to.eql('saved'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch engagement status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"saved\"\n}"
+            },
+            "url": "{{baseUrl}}/engagement-log/{{engagementId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status updated', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.status).to.eql('saved'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List customer engagement timeline",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/engagement-log?customerId={{customerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Saved brief appears in timeline', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.some(item => item.id === pm.collectionVariables.get('engagementId'))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get customer dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/customers/{{customerId}}/dashboard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Dashboard is database-backed', () => { pm.response.to.have.status(200); const data = pm.response.json().data; pm.expect(data.customer.id).to.eql(pm.collectionVariables.get('customerId')); pm.expect(data.engagementTimeline).to.be.an('array').that.is.not.empty; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Delete and database verification",
+      "item": [
+        {
+          "name": "Delete engagement (archive)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/engagement-log/{{engagementId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Engagement archived', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.status).to.eql('archived'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify engagement removed from timeline",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/engagement-log?customerId={{customerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Archived engagement hidden', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.some(item => item.id === pm.collectionVariables.get('engagementId'))).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete usage (hard delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/usage/{{usageId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Usage hard-deleted', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.deleteMode).to.eql('hard'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify usage deleted",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/usage?customerId={{customerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Usage row absent', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.some(item => item.id === pm.collectionVariables.get('usageId'))).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete customer (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/customers/{{customerId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer soft-deleted', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data.deleteMode).to.eql('soft'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify customer hidden",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/customers?search=Postman%20Demo"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Soft-deleted customer absent from active list', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.have.length(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,16 +1,81 @@
-# React + Vite
+# DealBrief AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+DealBrief AI is a React + Flask + PostgreSQL capstone application that turns
+customer usage and saved engagement history into AI-generated meeting briefs and
+periodic customer intelligence.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 and Vite
+- Flask and SQLAlchemy
+- PostgreSQL
+- OpenAI Responses API with structured outputs
+- Postman/Newman, Python `unittest`, and Playwright
 
-## React Compiler
+## First-time setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cp .env.example .env
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+npm install
+```
 
-## Expanding the Oxlint configuration
+Fill in the root `.env`. Keep the OpenAI key server-side and never place it in a
+`VITE_` variable.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+For a new PostgreSQL database, execute:
+
+1. `database/schema.sql`
+2. `database/seed.sql`
+
+For the existing capstone database, execute
+`backend/sql/mvp_schema_patch.sql`, then optionally `database/seed.sql`.
+
+## Run
+
+Terminal 1:
+
+```bash
+source .venv/bin/activate
+python backend/run.py
+```
+
+Terminal 2:
+
+```bash
+npm run dev
+```
+
+- React: `http://localhost:5173`
+- Flask: `http://127.0.0.1:3000/api`
+
+## Documentation and submission artifacts
+
+- [API specification](docs/api-specification.md)
+- [Database design](docs/database-design.md)
+- [API test cases](docs/api-test-cases.md)
+- [Actual test results](docs/api-test-results.md)
+- [Demo script](docs/demo-script.md)
+- [Postman collection](postman/DealBriefAI.postman_collection.json)
+
+## Tests
+
+```bash
+PYTHONPATH=backend python -m unittest discover -s backend/tests -v
+
+RUN_DB_INTEGRATION=1 PYTHONPATH=backend \
+  python -m unittest discover -s backend/tests -v
+
+npm run build
+npm run lint
+npx playwright test
+```
+
+The live OpenAI smoke test incurs API usage:
+
+```bash
+RUN_LIVE_OPENAI=1 PYTHONPATH=backend \
+  python -m unittest backend.tests.test_live_openai -v
+```

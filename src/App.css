@@ -372,7 +372,13 @@ textarea {
   margin-top: 0;
 }
 
-.summary-grid,
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -409,12 +415,24 @@ textarea {
   line-height: 1.65;
 }
 
+.signal-card ul {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  color: #334155;
+  line-height: 1.65;
+}
+
+.signal-card li {
+  margin: 6px 0;
+}
+
 .timeline-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
   gap: 20px;
   margin-bottom: 20px;
+  text-align: center;
 }
 
 .timeline-header h3,
@@ -470,6 +488,12 @@ textarea {
   border-radius: 16px;
 }
 
+.timeline-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .timeline-date strong,
 .timeline-date span {
   display: block;
@@ -488,6 +512,25 @@ textarea {
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+.timeline-date p {
+  width: fit-content;
+  margin: 8px 0 0;
+  padding: 5px 9px;
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.timeline-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .timeline-source {
@@ -669,4 +712,42 @@ td {
   textarea {
     transition: none;
   }
+}
+.api-notice {
+  margin: 1rem 2rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid;
+  border-radius: 0.75rem;
+}
+
+.api-notice.success {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.api-notice.error {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.loading-state {
+  padding: 3rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.intelligence-controls {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+button:disabled,
+.file-upload-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
