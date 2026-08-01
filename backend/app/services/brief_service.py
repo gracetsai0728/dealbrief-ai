@@ -145,14 +145,7 @@ def build_brief_context(customer, product, meeting_type, deliverable_type, notes
         if not intelligence
         else {
             "snapshotDate": _iso(intelligence.snapshot_date),
-            "renewalRisk": intelligence.renewal_risk,
-            "expansionSignal": intelligence.expansion_signal,
-            "nextBestActions": intelligence.next_best_actions
-            or (
-                [{"action": intelligence.next_best_action}]
-                if intelligence.next_best_action
-                else []
-            ),
+            "nextBestActions": intelligence.next_best_actions or [],
             "aiKeySignal": intelligence.ai_key_signal,
             "metrics": intelligence.metrics,
         },

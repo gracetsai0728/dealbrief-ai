@@ -25,13 +25,13 @@ npm install
 Fill in the root `.env`. Keep the OpenAI key server-side and never place it in a
 `VITE_` variable.
 
-For a new PostgreSQL database, execute:
+For a new or existing PostgreSQL database, execute:
 
 1. `database/schema.sql`
-2. `database/seed.sql`
+2. `database/seed.sql` (optional demo data)
 
-For the existing capstone database, execute
-`backend/sql/mvp_schema_patch.sql`, then optionally `database/seed.sql`.
+`database/schema.sql` is idempotent and includes compatibility upgrades for
+databases created with an earlier version of the project.
 
 ## Run
 

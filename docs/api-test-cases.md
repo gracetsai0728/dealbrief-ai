@@ -20,7 +20,7 @@ Environment: local React `:5173`, Flask `:3000`, PostgreSQL `:5432`
 | TC-013 | Save engagement | Draft engagement UUID | `200`, status saved | Engagement status becomes saved |
 | TC-014 | Patch engagement | Status saved | `200`, status saved | Updated status persists |
 | TC-015 | Timeline | Customer UUID | Saved brief appears with summary | Saved row selected by timeline query |
-| TC-016 | Dashboard | Customer UUID | Customer, usage, intelligence, timeline | Combined read matches source tables |
+| TC-016 | Dashboard | Customer UUID | Customer renewal date, active users, intelligence, timeline | Combined read matches source tables |
 | TC-017 | Delete engagement | Saved engagement UUID | `200`, archive mode | Status becomes archived |
 | TC-018 | Verify engagement delete | Timeline read | Archived UUID absent | Archived row still retained for audit |
 | TC-019 | Delete usage | Usage UUID | `200`, hard mode | Usage row no longer exists |

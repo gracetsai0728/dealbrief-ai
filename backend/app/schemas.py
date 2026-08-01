@@ -69,8 +69,6 @@ class IntelligenceMetrics(StrictModel):
 
 
 class IntelligenceOutput(StrictModel):
-    renewalRisk: Literal["low", "medium", "high"]
-    expansionSignal: str
     aiKeySignal: str
     nextBestActions: list[RecommendedAction] = Field(min_length=1, max_length=3)
     metrics: IntelligenceMetrics

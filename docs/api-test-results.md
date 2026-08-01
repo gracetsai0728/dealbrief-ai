@@ -20,6 +20,23 @@ The Postman run included two real OpenAI calls. Intelligence took approximately
 6.3 seconds and call-brief generation approximately 9.6 seconds. The average
 response time across all 24 requests was 677 ms.
 
+## Customer Intelligence card update verification
+
+Executed on 2026-07-31 after replacing Renewal Risk and Expansion Signal with
+Renewal Date and Active Users:
+
+| Check | Result |
+|---|---|
+| Python unit + PostgreSQL integration | PASS — 10 discovered, 9 passed, 1 paid live test skipped, 0 failures |
+| JavaScript lint | PASS — 0 warnings, 0 errors |
+| React production build | PASS — Vite built 19 modules |
+| Browser integration | PASS — 1 Playwright test, 0 failures |
+| PostgreSQL schema | PASS — obsolete `renewal_risk` and `expansion_signal` columns are absent |
+| Dashboard source data | PASS — ABC Bank renewal date `2026-10-15`; latest active users `410` |
+
+The paid live OpenAI smoke test was not rerun for this UI/schema update. Its
+Pydantic structured-output contract and mocked API integration tests passed.
+
 ## Database evidence after the Postman workflow
 
 The final read-only verification query returned:

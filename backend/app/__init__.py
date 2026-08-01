@@ -5,6 +5,7 @@ from .config import Config
 from .errors import ApiError
 from .extensions import db
 from .routes import api
+from .swagger import swagger
 
 
 def create_app(config_object=Config):
@@ -14,6 +15,7 @@ def create_app(config_object=Config):
     db.init_app(app)
     CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
     app.register_blueprint(api, url_prefix="/api")
+    app.register_blueprint(swagger, url_prefix="/api")
 
     @app.errorhandler(ApiError)
     def handle_api_error(error):

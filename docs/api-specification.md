@@ -96,13 +96,22 @@ Input: customer UUID in the path.
 ```json
 {
   "data": {
-    "customer": { "id": "CUSTOMER_UUID", "name": "ABC Bank", "status": "active" },
+    "customer": {
+      "id": "CUSTOMER_UUID",
+      "name": "ABC Bank",
+      "renewalDate": "2026-10-15",
+      "status": "active"
+    },
     "latestUsage": [
-      { "id": "USAGE_UUID", "productName": "CRM Platform", "licenseUtilization": 82 }
+      {
+        "id": "USAGE_UUID",
+        "productName": "CRM Platform",
+        "activeUsers": 410,
+        "licenseUtilization": 82
+      }
     ],
     "intelligence": {
       "id": "INTELLIGENCE_UUID",
-      "renewalRisk": "medium",
       "nextBestActions": [
         {
           "action": "Prepare renewal value story",
@@ -247,8 +256,6 @@ Both dates are optional. Defaults to the latest 90 days.
   "data": {
     "id": "INTELLIGENCE_UUID",
     "snapshotDate": "2026-07-23",
-    "renewalRisk": "medium",
-    "expansionSignal": "Reporting expansion potential",
     "aiKeySignal": "Usage is growing while reporting adoption remains uneven.",
     "nextBestActions": [
       {
@@ -287,7 +294,7 @@ Input: customer UUID in the path.
   "data": [
     {
       "id": "INTELLIGENCE_UUID",
-      "renewalRisk": "medium",
+      "aiKeySignal": "Usage is growing while reporting adoption remains uneven.",
       "generationStatus": "completed",
       "generatedAt": "2026-07-23T18:35:00+00:00"
     }

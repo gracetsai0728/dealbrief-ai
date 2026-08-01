@@ -93,9 +93,6 @@ CREATE TABLE IF NOT EXISTS intelligence_snapshots (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     snapshot_date DATE NOT NULL,
-    renewal_risk VARCHAR(20) NOT NULL CHECK (renewal_risk IN ('low', 'medium', 'high')),
-    expansion_signal TEXT,
-    next_best_action TEXT,
     next_best_actions JSONB NOT NULL DEFAULT '[]'::JSONB,
     ai_key_signal TEXT,
     last_interaction_at TIMESTAMPTZ,
@@ -109,6 +106,71 @@ CREATE TABLE IF NOT EXISTS intelligence_snapshots (
     prompt_version VARCHAR(50),
     generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Compatibility upgrades for databases created with an earlier version of
+-- DealBrief AI. These statements are no-ops for a newly created database and
+-- make this file safe to rerun as the single source of database structure.
+ALTER TABLE engagements
+    ADD COLUMN IF NOT EXISTS input_snapshot JSONB
+        NOT NULL DEFAULT '{}'::JSONB,
+    ADD COLUMN IF NOT EXISTS model VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS prompt_version VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS generated_at TIMESTAMPTZ
+        NOT NULL DEFAULT NOW();
+
+ALTER TABLE customers
+    ADD COLUMN IF NOT EXISTS source_import_job_id UUID
+        REFERENCES import_jobs(id) ON DELETE SET NULL;
+
+ALTER TABLE usage_snapshots
+    ADD COLUMN IF NOT EXISTS import_job_id UUID
+        REFERENCES import_jobs(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ
+        NOT NULL DEFAULT NOW();
+
+ALTER TABLE intelligence_snapshots
+    ADD COLUMN IF NOT EXISTS next_best_actions JSONB
+        NOT NULL DEFAULT '[]'::JSONB,
+    ADD COLUMN IF NOT EXISTS period_start TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS period_end TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS source_data_through TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS generation_status VARCHAR(30)
+        NOT NULL DEFAULT 'completed';
+
+-- Preserve a legacy single action in the structured array before removing the
+-- obsolete next_best_action column from an existing database.
+DO $migration$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'intelligence_snapshots'
+          AND column_name = 'next_best_action'
+    ) THEN
+        UPDATE intelligence_snapshots
+        SET next_best_actions = jsonb_build_array(
+            jsonb_build_object(
+                'action', next_best_action,
+                'priority', 'high',
+                'reason', COALESCE(ai_key_signal, ''),
+                'dueDate', NULL
+            )
+        )
+        WHERE next_best_action IS NOT NULL
+          AND next_best_actions = '[]'::JSONB;
+
+        ALTER TABLE intelligence_snapshots
+            DROP COLUMN next_best_action;
+    END IF;
+END
+$migration$;
+
+-- Renewal date and active users come from customers and usage_snapshots.
+-- Remove the obsolete AI-derived fields from an existing database.
+ALTER TABLE intelligence_snapshots
+    DROP COLUMN IF EXISTS renewal_risk,
+    DROP COLUMN IF EXISTS expansion_signal;
 
 CREATE INDEX IF NOT EXISTS idx_customers_active_name
     ON customers(name) WHERE deleted_at IS NULL;

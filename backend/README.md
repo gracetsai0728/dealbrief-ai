@@ -18,8 +18,9 @@ The root `.env.example` is the single environment template for both React and Fl
 Update the root `.env` with the PostgreSQL password and an OpenAI project API
 key. Never put the OpenAI key in a `VITE_` variable or frontend code.
 
-For a new database, run `database/schema.sql` followed by `database/seed.sql`.
-For the existing database, run `backend/sql/mvp_schema_patch.sql`.
+For a new or existing database, run `database/schema.sql`, then optionally run
+`database/seed.sql` for demo data. The schema file is idempotent and includes
+compatibility upgrades for earlier versions of the project database.
 
 Run the API:
 
@@ -28,6 +29,29 @@ python backend/run.py
 ```
 
 The API listens on `http://localhost:3000/api`.
+
+## Swagger UI
+
+After starting Flask, open the interactive API documentation:
+
+```text
+http://127.0.0.1:3000/api/docs
+```
+
+The OpenAPI 3.0 source is available at:
+
+```text
+http://127.0.0.1:3000/api/openapi.yaml
+```
+
+In Swagger UI, expand an endpoint, select **Try it out**, replace example UUIDs
+with IDs returned by `GET /customers` and `GET /products`, then select
+**Execute**. The UI shows the request URL, generated cURL command, response
+status, and response body.
+
+The Swagger UI page loads official Swagger UI assets from unpkg, so the
+documentation page requires an internet connection. The API and OpenAPI YAML
+remain available locally.
 
 ## Endpoints
 
@@ -68,7 +92,7 @@ Example brief request:
   "productId": "PRODUCT_UUID",
   "meetingType": "qbr",
   "deliverableType": "call_brief",
-  "notes": "Focus on renewal risk and reporting adoption."
+  "notes": "Focus on renewal planning and reporting adoption."
 }
 ```
 

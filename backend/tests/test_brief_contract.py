@@ -93,8 +93,6 @@ class StructuredOutputTests(unittest.TestCase):
     def test_intelligence_contract(self):
         result = IntelligenceOutput.model_validate(
             {
-                "renewalRisk": "medium",
-                "expansionSignal": "Reporting add-on interest",
                 "aiKeySignal": "Usage is growing while reporting adoption is uneven.",
                 "nextBestActions": [
                     {

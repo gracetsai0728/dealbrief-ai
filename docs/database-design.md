@@ -32,23 +32,20 @@ records as mock data.
    Customer Engagement Timeline.
 4. `POST /api/customers/:id/intelligence/refresh` gathers usage and saved
    engagements for an analysis period.
-5. OpenAI returns schema-validated risk, signals, metrics, and next actions.
+5. OpenAI returns schema-validated customer signals, metrics, and next actions.
 6. Flask writes a new immutable `intelligence_snapshots` row. Previous snapshots
    remain available as history.
 
 ## SQL files
 
-- `database/schema.sql`: complete schema for a new database.
+- `database/schema.sql`: the single source of database structure. It creates a
+  new database schema and applies compatibility upgrades when rerun against an
+  earlier project database.
 - `database/seed.sql`: deterministic demo data; safe to run repeatedly.
-- `backend/sql/mvp_schema_patch.sql`: additive migration for an existing project
-  database.
 
-Run from pgAdmin in this order for a new database:
+Run from pgAdmin in this order for a new or existing database:
 
 ```sql
 -- Open and execute database/schema.sql
--- Then open and execute database/seed.sql
+-- Optionally execute database/seed.sql for demo data
 ```
-
-For the existing database, run only `backend/sql/mvp_schema_patch.sql`, followed
-by `database/seed.sql` if demo rows are needed.

@@ -64,7 +64,7 @@ function App() {
   useEffect(() => {
     setBusyAction('initial-load')
     loadData()
-      .catch((error) => setNotice({ type: 'error', text: error.message }))
+      .catch((error) => setNotice({ tab: 'meeting', type: 'error', text: error.message }))
       .finally(() => setBusyAction(''))
   }, [])
 
@@ -75,21 +75,22 @@ function App() {
     }
     fetchCustomerDashboard(intelligenceCustomerId)
       .then(setDashboard)
-      .catch((error) => setNotice({ type: 'error', text: error.message }))
+      .catch((error) => setNotice({ tab: 'intelligence', type: 'error', text: error.message }))
   }, [intelligenceCustomerId])
 
   const lastDataUpload = importJobs[0]?.completedAt || importJobs[0]?.createdAt
 
   const runAction = async (name, action, successMessage, reload = true) => {
+    const noticeTab = activeTab
     setBusyAction(name)
     setNotice(null)
     try {
       const result = await action()
       if (reload) await loadData()
-      setNotice({ type: 'success', text: successMessage })
+      setNotice({ tab: noticeTab, type: 'success', text: successMessage })
       return result
     } catch (error) {
-      setNotice({ type: 'error', text: error.message })
+      setNotice({ tab: noticeTab, type: 'error', text: error.message })
       return null
     } finally {
       setBusyAction('')
@@ -131,14 +132,14 @@ function App() {
   const handleCopyBrief = async () => {
     if (!brief || !navigator.clipboard) return
     await navigator.clipboard.writeText(formatBriefForCopy(brief))
-    setNotice({ type: 'success', text: 'Brief copied to the clipboard.' })
+    setNotice({ tab: 'meeting', type: 'success', text: 'Brief copied to the clipboard.' })
   }
 
   const handleCsvUpload = async (file, importType) => {
     if (!file) return
     const rows = parseCsv(await file.text())
     if (!rows.length) {
-      setNotice({ type: 'error', text: 'The CSV contains no data rows.' })
+      setNotice({ tab: 'admin', type: 'error', text: 'The CSV contains no data rows.' })
       return
     }
     const importer = importType === 'customers' ? importCustomers : importUsage
@@ -161,7 +162,7 @@ function App() {
   }
 
   const handleDelete = async (kind, id, label) => {
-    if (!window.confirm(`Delete ${label}? This action will be reflected in PostgreSQL.`)) return
+    if (!window.confirm(`Delete ${label}?`)) return
     const operations = {
       customer: deleteCustomer,
       usage: deleteUsage,
@@ -180,7 +181,7 @@ function App() {
   return (
     <div className="app">
       <header className="hero-section">
-        <p className="eyebrow">AI Sales Meeting Brief Platform</p>
+        <p className="eyebrow"><span className="hero-spark" aria-hidden="true">✦</span> AI Sales Meeting Brief Platform</p>
         <h1>DealBrief AI</h1>
         <p>Turn customer intelligence into sales-ready meeting briefs, email drafts, and meeting agendas.</p>
       </header>
@@ -194,11 +195,13 @@ function App() {
             Customer Intelligence
           </TabButton>
           <TabButton active={activeTab === 'admin'} onClick={() => setActiveTab('admin')}>
-            Admin Data Management
+            Data Management
           </TabButton>
         </nav>
 
-        {notice && <div className={`api-notice ${notice.type}`}>{notice.text}</div>}
+        {notice?.tab === activeTab && (
+          <div className={`api-notice ${notice.type}`}>{notice.text}</div>
+        )}
         {busyAction === 'initial-load' ? (
           <p className="loading-state">Loading data from Flask and PostgreSQL…</p>
         ) : (
@@ -283,13 +286,12 @@ function MeetingBriefPage({
   onCopy,
 }) {
   return (
-    <section className="page-section">
+    <section className="page-section meeting-page">
       <div className="section-heading">
-        <h2>Generate a sales meeting brief</h2>
-        <p>Customer, usage, intelligence, and engagement context comes from the Flask API.</p>
+        <h2>Meeting Brief</h2>
       </div>
 
-      <div className="panel">
+      <div className="panel meeting-form-panel">
         <div className="form-grid">
           <SelectField label="Customer" value={selectedCustomerId} onChange={setSelectedCustomerId}>
             {customers.map((customer) => (
@@ -313,7 +315,7 @@ function MeetingBriefPage({
               value={notes}
               maxLength="2000"
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Example: focus on renewal risk or executive audience needs"
+              placeholder="Example: focus on renewal planning or executive audience needs"
               rows="4"
             />
           </label>
@@ -323,7 +325,7 @@ function MeetingBriefPage({
           disabled={!selectedCustomerId || !productId || busyAction === 'generate'}
           onClick={onGenerate}
         >
-          {busyAction === 'generate' ? 'Generating with OpenAI…' : 'Generate Meeting Brief'}
+          {busyAction === 'generate' ? 'Generating Brief…' : 'Generate Meeting Brief'}
         </button>
       </div>
 
@@ -355,20 +357,29 @@ function CustomerIntelligencePage({
     ['Industry', customer?.industry || 'Not available'],
     ['Usage Growth', formatPercent(primaryUsage?.usageGrowth)],
     ['License Utilization', formatPercent(primaryUsage?.licenseUtilization)],
-    ['Renewal Risk', titleCase(intelligence?.renewalRisk) || 'Not analyzed'],
+    ['Renewal Date', formatDate(customer?.renewalDate)],
     ['Last Interaction', formatDate(intelligence?.sourceDataThrough)],
-    ['Expansion Signal', intelligence?.expansionSignal || 'Not analyzed'],
+    ['Active Users', primaryUsage?.activeUsers ?? 'Not available'],
   ]
 
   return (
-    <section className="page-section">
+    <section className="page-section intelligence-page">
       <div className="section-heading">
         <h2>Customer Intelligence</h2>
-        <p>AI snapshots are generated from stored usage and saved meeting logs, then persisted in PostgreSQL.</p>
       </div>
-      <div className="panel">
+
+      <div className="panel intelligence-panel">
+        <IntelligenceSectionHeader
+          title="Customer Overview"
+          subtitle="Latest customer profile, product usage, and account activity."
+        />
         <div className="intelligence-controls">
-          <SelectField label="Customer" value={selectedCustomerId} onChange={setSelectedCustomerId}>
+          <SelectField
+            className="centered-customer-select"
+            label="Customer"
+            value={selectedCustomerId}
+            onChange={setSelectedCustomerId}
+          >
             {customers.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
@@ -387,8 +398,25 @@ function CustomerIntelligencePage({
         </div>
       </div>
 
+      <div className="panel timeline-panel">
+        <IntelligenceSectionHeader
+          title="Customer Engagement Timeline"
+          subtitle="Meeting history from generated briefs saved to the engagement log."
+        />
+        <div className="timeline">
+          {dashboard?.engagementTimeline?.length ? (
+            dashboard.engagementTimeline.map((event) => <TimelineItem key={event.id} event={event} />)
+          ) : (
+            <p className="empty-state">No saved meeting briefs yet.</p>
+          )}
+        </div>
+      </div>
+
       <div className="signal-card">
-        <span>Next Best Action</span>
+        <IntelligenceSectionHeader
+          title="Next Best Action"
+          subtitle="Recommended follow-up actions based on usage and saved meeting history."
+        />
         {intelligence?.nextBestActions?.length ? (
           <ul>
             {intelligence.nextBestActions.map((action, index) => (
@@ -401,22 +429,6 @@ function CustomerIntelligencePage({
         ) : (
           <p>Refresh intelligence after usage or meeting data is available.</p>
         )}
-      </div>
-
-      <div className="panel">
-        <div className="timeline-header">
-          <div>
-            <h3>Customer Engagement Timeline</h3>
-            <p>Meeting history from generated briefs saved to the engagement log.</p>
-          </div>
-        </div>
-        <div className="timeline">
-          {dashboard?.engagementTimeline?.length ? (
-            dashboard.engagementTimeline.map((event) => <TimelineItem key={event.id} event={event} />)
-          ) : (
-            <p className="empty-state">No saved meeting briefs yet.</p>
-          )}
-        </div>
       </div>
     </section>
   )
@@ -433,10 +445,9 @@ function AdminDataManagementPage({
   onDelete,
 }) {
   return (
-    <section className="page-section">
+    <section className="page-section data-management-page">
       <div className="section-heading">
-        <h2>Admin Data Management</h2>
-        <p>All rows shown here are read from PostgreSQL through Flask.</p>
+        <h2>Data Management</h2>
       </div>
       <div className="overview-grid">
         <MetricCard label="Total Customers" value={customers.length} />
@@ -464,7 +475,7 @@ function AdminDataManagementPage({
         </div>
       </div>
 
-      <DataTable title="Manage Customers" columns={['Customer Name', 'Industry', 'Account Owner', 'Salesforce Account ID', 'Opportunity Stage', 'Renewal Date', 'Status', 'Action']}>
+      <DataTable tone="blue" title="Manage Customers" columns={['Customer Name', 'Industry', 'Account Owner', 'Salesforce Account ID', 'Opportunity Stage', 'Renewal Date', 'Status', 'Action']}>
         {customers.map((customer) => (
           <tr key={customer.id}>
             <td>{customer.name}</td>
@@ -483,7 +494,7 @@ function AdminDataManagementPage({
         ))}
       </DataTable>
 
-      <DataTable title="Manage Usage Data" columns={['Customer', 'Product', 'Active Users', 'License Utilization', 'Usage Growth', 'Feature Adoption', 'Snapshot Date', 'Action']}>
+      <DataTable tone="green" title="Manage Usage Data" columns={['Customer', 'Product', 'Active Users', 'License Utilization', 'Usage Growth', 'Feature Adoption', 'Snapshot Date', 'Action']}>
         {usageRecords.map((record) => (
           <tr key={record.id}>
             <td>{record.customerName || record.customerId}</td>
@@ -502,7 +513,7 @@ function AdminDataManagementPage({
         ))}
       </DataTable>
 
-      <DataTable title="Manage Engagement Log" columns={['Date', 'Customer', 'Meeting Type', 'Product', 'Deliverable', 'Generated By', 'Action']}>
+      <DataTable tone="purple" title="Manage Engagement Log" columns={['Date', 'Customer', 'Meeting Type', 'Product', 'Deliverable', 'Generated By', 'Action']}>
         {engagementLogs.length ? engagementLogs.map((log) => (
           <tr key={log.id}>
             <td>{formatDate(log.date)}</td>
@@ -542,9 +553,9 @@ function FileUploadButton({ label, disabled, onFile }) {
   )
 }
 
-function SelectField({ label, value, onChange, children }) {
+function SelectField({ className = '', label, value, onChange, children }) {
   return (
-    <label className="field">
+    <label className={`field ${className}`.trim()}>
       {label}
       <select value={value} onChange={(event) => onChange(event.target.value)}>
         {children}
@@ -656,17 +667,29 @@ function MetricCard({ label, value }) {
   return <div className="metric-card"><span>{label}</span><strong>{value || '—'}</strong></div>
 }
 
-function DataTable({ title, columns, children }) {
+function IntelligenceSectionHeader({ title, subtitle }) {
   return (
-    <section className="panel table-panel">
-      <h3>{title}</h3>
+    <div className="intelligence-section-header">
+      <h2>{title}</h2>
+      <p>{subtitle}</p>
+    </div>
+  )
+}
+
+function DataTable({ title, tone = 'blue', columns, children }) {
+  return (
+    <details className={`panel table-panel table-panel-${tone}`}>
+      <summary className="table-toggle">
+        <h3>{title}</h3>
+        <span className="table-toggle-icon" aria-hidden="true">⌄</span>
+      </summary>
       <div className="table-scroll">
         <table>
           <thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
           <tbody>{children}</tbody>
         </table>
       </div>
-    </section>
+    </details>
   )
 }
 
@@ -707,7 +730,14 @@ function formatBriefForCopy(brief) {
 
 function formatDate(value) {
   if (!value) return '—'
-  const date = new Date(value)
+  const dateOnlyMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const date = dateOnlyMatch
+    ? new Date(
+        Number(dateOnlyMatch[1]),
+        Number(dateOnlyMatch[2]) - 1,
+        Number(dateOnlyMatch[3]),
+      )
+    : new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString()
 }

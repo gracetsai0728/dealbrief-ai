@@ -110,8 +110,6 @@ class DatabaseApiIntegrationTests(unittest.TestCase):
 
         intelligence_result = {
             "content": {
-                "renewalRisk": "medium",
-                "expansionSignal": "Reporting expansion potential",
                 "aiKeySignal": "Usage is growing with room for reporting adoption.",
                 "nextBestActions": [
                     {
@@ -143,7 +141,7 @@ class DatabaseApiIntegrationTests(unittest.TestCase):
             )
         self.assertEqual(intelligence_response.status_code, 201)
         self.assertEqual(
-            intelligence_response.get_json()["data"]["renewalRisk"], "medium"
+            intelligence_response.get_json()["data"]["metrics"]["accountHealthScore"], 76
         )
 
         brief_result = {

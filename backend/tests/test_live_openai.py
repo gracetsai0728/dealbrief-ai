@@ -51,7 +51,7 @@ class LiveOpenAiTests(unittest.TestCase):
         intelligence_data = intelligence.get_json()["data"]
         self.created_intelligence_ids.append(intelligence_data["id"])
         self.assertTrue(intelligence_data["nextBestActions"])
-        self.assertIn(intelligence_data["renewalRisk"], {"low", "medium", "high"})
+        self.assertTrue(intelligence_data["aiKeySignal"])
 
         brief = self.client.post(
             "/api/generate-brief",

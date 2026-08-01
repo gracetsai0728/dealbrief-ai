@@ -82,8 +82,8 @@ SET active_users = EXCLUDED.active_users,
     feature_adoption = EXCLUDED.feature_adoption;
 
 INSERT INTO intelligence_snapshots (
-    id, customer_id, snapshot_date, renewal_risk, expansion_signal,
-    next_best_action, next_best_actions, ai_key_signal, last_interaction_at,
+    id, customer_id, snapshot_date, next_best_actions, ai_key_signal,
+    last_interaction_at,
     metrics, period_start, period_end, source_data_through,
     generation_status, model, prompt_version, generated_at
 )
@@ -91,9 +91,6 @@ VALUES (
     '50000000-0000-0000-0000-000000000001',
     (SELECT id FROM customers WHERE salesforce_account_id = 'SF-ACCT-1042'),
     '2026-07-05',
-    'medium',
-    'Reporting add-on interest',
-    'Prepare renewal value story',
     '[
       {
         "action": "Prepare renewal value story",
@@ -127,10 +124,7 @@ VALUES (
     '2026-07-05T23:59:59Z'
 )
 ON CONFLICT (id) DO UPDATE
-SET renewal_risk = EXCLUDED.renewal_risk,
-    expansion_signal = EXCLUDED.expansion_signal,
-    next_best_action = EXCLUDED.next_best_action,
-    next_best_actions = EXCLUDED.next_best_actions,
+SET next_best_actions = EXCLUDED.next_best_actions,
     ai_key_signal = EXCLUDED.ai_key_signal,
     metrics = EXCLUDED.metrics;
 

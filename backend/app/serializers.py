@@ -47,20 +47,9 @@ def serialize_intelligence(snapshot):
     if not snapshot:
         return None
     actions = snapshot.next_best_actions or []
-    if not actions and snapshot.next_best_action:
-        actions.append(
-            {
-                "action": snapshot.next_best_action,
-                "priority": "high",
-                "reason": snapshot.ai_key_signal,
-                "dueDate": None,
-            }
-        )
     return {
         "id": str(snapshot.id),
         "snapshotDate": iso(snapshot.snapshot_date),
-        "renewalRisk": snapshot.renewal_risk,
-        "expansionSignal": snapshot.expansion_signal,
         "aiKeySignal": snapshot.ai_key_signal,
         "nextBestActions": actions,
         "metrics": snapshot.metrics,
