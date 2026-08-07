@@ -52,25 +52,46 @@ class MeetingAgendaOutput(StrictModel):
     agenda: AgendaContent
 
 
-class RecommendedAction(StrictModel):
+class ActionRecommendation(StrictModel):
     action: str
     priority: Literal["high", "medium", "low"]
     reason: str
     dueDate: str | None
 
 
+class RecommendedNextSteps(StrictModel):
+    crossSell: list[ActionRecommendation] = Field(min_length=1, max_length=2)
+    upsell: list[ActionRecommendation] = Field(min_length=1, max_length=2)
+    renewal: list[ActionRecommendation] = Field(min_length=1, max_length=2)
+    winback: list[ActionRecommendation] = Field(min_length=1, max_length=2)
+
+
+class IndustryDynamic(StrictModel):
+    headline: str
+    summary: str
+    impact: str
+
+
+class CompanyNewsItem(StrictModel):
+    headline: str
+    summary: str
+    sourceName: str
+    sourceUrl: str
+    publishedDate: str | None
+
+
 class IntelligenceMetrics(StrictModel):
     accountHealthScore: int = Field(ge=0, le=100)
-    adoptionScore: int = Field(ge=0, le=100)
-    engagementScore: int = Field(ge=0, le=100)
-    usageGrowth: float | None
-    licenseUtilization: float | None
+    totalLicensedSeats: int = Field(ge=0)
+    activeSubscriptions: int = Field(ge=0)
     riskReasons: list[str] = Field(max_length=6)
 
 
 class IntelligenceOutput(StrictModel):
     aiKeySignal: str
-    nextBestActions: list[RecommendedAction] = Field(min_length=1, max_length=3)
+    industryDynamics: list[IndustryDynamic] = Field(min_length=2, max_length=2)
+    companyNews: list[CompanyNewsItem] = Field(max_length=5)
+    recommendedNextSteps: RecommendedNextSteps
     metrics: IntelligenceMetrics
 
 

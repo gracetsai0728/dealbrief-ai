@@ -13,7 +13,11 @@ def create_app(config_object=Config):
     app.config.from_object(config_object)
 
     db.init_app(app)
-    CORS(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
+        supports_credentials=True,
+    )
     app.register_blueprint(api, url_prefix="/api")
     app.register_blueprint(swagger, url_prefix="/api")
 

@@ -32,7 +32,10 @@ class SwaggerDocumentationTests(unittest.TestCase):
             self.assertIn("application/yaml", response.content_type)
             self.assertIn(b"openapi: 3.0.3", response.data)
             self.assertIn(b"/generate-brief:", response.data)
-            self.assertIn(b"/engagement-log/{engagementId}:", response.data)
+            self.assertIn(b"/subscriptions:", response.data)
+            self.assertNotIn(b"/usage:", response.data)
+            self.assertNotIn(b"/engagement-log", response.data)
+            self.assertNotIn(b"/imports", response.data)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 # DealBrief AI Flask API
 
-Database-backed API for imports, customer intelligence, structured OpenAI
-meeting briefs, engagement timelines, and admin delete operations.
+Database-backed API for customer product subscriptions, customer intelligence,
+structured meeting briefs produced by two OpenAI Agents SDK agents, and
+administrator data operations.
 
 ## Setup
 
@@ -57,25 +58,24 @@ remain available locally.
 
 ```text
 GET   /api/health
+POST  /api/auth/register
+POST  /api/auth/login
+POST  /api/auth/logout
+GET   /api/auth/me
 GET   /api/customers
+POST  /api/customers
 GET   /api/products
-GET   /api/usage
+POST  /api/products
+GET   /api/subscriptions
+POST  /api/subscriptions
 GET   /api/customers/:customerId/dashboard
+GET   /api/customers/:customerId/timeline
 DELETE /api/customers/:customerId
-DELETE /api/usage/:usageId
-GET   /api/imports
-GET   /api/imports/:importJobId
-POST  /api/imports/customers
-POST  /api/imports/usage
+DELETE /api/subscriptions/:subscriptionId
 GET   /api/customers/:customerId/intelligence
 GET   /api/customers/:customerId/intelligence/latest
 POST  /api/customers/:customerId/intelligence/refresh
 POST  /api/generate-brief
-GET   /api/engagement-log
-GET   /api/engagement-log/:engagementId
-POST  /api/engagement-log
-PATCH /api/engagement-log/:engagementId
-DELETE /api/engagement-log/:engagementId
 ```
 
 Run the contract tests from the project root:
@@ -90,17 +90,35 @@ Example brief request:
 {
   "customerId": "CUSTOMER_UUID",
   "productId": "PRODUCT_UUID",
-  "meetingType": "qbr",
+  "meetingType": "winback",
   "deliverableType": "call_brief",
   "notes": "Focus on renewal planning and reporting adoption."
 }
 ```
 
-Generating a brief creates a draft engagement. Save it to the customer timeline with:
+Generated briefs are returned directly and are not saved to an engagement log.
 
-```json
-POST /api/engagement-log
-{
-  "engagementId": "ENGAGEMENT_UUID"
-}
+## Agents
+
+Agent definitions are under `backend/app/agents/`:
+
+```text
+context.py              Server-owned run context and typed tool results
+database_tools.py       Read-only customer, product, and subscription tools
+intelligence_agent.py   Database- and web-search-enabled intelligence specialist
+meeting_brief_agent.py  Database-grounded meeting deliverable specialist
+runtime.py              Required-tool-call validation
 ```
+
+Both agents use Pydantic structured outputs and the configured OpenAI model.
+The Intelligence Agent must load the customer and overlapping subscriptions,
+then perform current industry and company-news research. The Meeting Brief
+Agent must load the customer, selected product, latest matching subscription,
+and latest saved intelligence. Database function tools obtain authorized IDs
+from local run context, execute serially, and cannot write data.
+
+The service layer calls each agent through `Runner.run_sync()`, verifies that
+all required database tools ran, validates the structured result, and performs
+the only database write: saving a completed intelligence snapshot. Tracing
+uses the `dealbrief-intelligence` and `dealbrief-meeting-brief` workflow names
+with sensitive trace payloads disabled.

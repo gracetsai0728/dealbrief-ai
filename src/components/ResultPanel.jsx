@@ -1,4 +1,4 @@
-export function ResultPanel({ result, onLogEngagement, isLogView, onClose }) {
+export function ResultPanel({ result, isLogView, onClose }) {
   if (!result) return null
 
   const renderCall = () => (
@@ -86,11 +86,6 @@ export function ResultPanel({ result, onLogEngagement, isLogView, onClose }) {
       {result.deliverable === 'Meeting Agenda' && renderAgenda()}
       {result.deliverable === 'Call' && renderCall()}
 
-      {onLogEngagement && (
-        <button className="btn btn-primary" onClick={onLogEngagement}>
-          Log Engagement
-        </button>
-      )}
     </section>
   )
 }

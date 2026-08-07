@@ -1,16 +1,15 @@
 from datetime import datetime, timezone
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, or_
 
 from ..errors import ApiError
 from ..extensions import db
-from ..models import Customer, Engagement, IntelligenceSnapshot, Product, UsageSnapshot
+from ..models import Customer, Product
 from .openai_service import generate_structured_brief
 
 
-MEETING_TYPES = {"qbr", "renewal", "discovery", "upsell"}
+MEETING_TYPES = {"winback", "renewal", "discovery", "upsell"}
 DELIVERABLE_ALIASES = {
     "call": "call_brief",
     "call brief": "call_brief",
@@ -26,10 +25,6 @@ DELIVERABLE_LABELS = {
     "email_draft": "Email Draft",
     "meeting_agenda": "Meeting Agenda",
 }
-
-
-def _as_float(value):
-    return float(value) if isinstance(value, Decimal) else value
 
 
 def _iso(value):
@@ -56,7 +51,6 @@ def find_customer(reference):
             or_(
                 func.lower(Customer.name) == normalized,
                 func.lower(func.replace(Customer.name, " ", "-")) == normalized,
-                func.lower(Customer.salesforce_account_id) == normalized,
             )
         ).first()
 
@@ -83,7 +77,7 @@ def normalize_generation_request(payload):
     if meeting_type not in MEETING_TYPES:
         raise ApiError(
             "VALIDATION_ERROR",
-            "meetingType must be one of: qbr, renewal, discovery, upsell.",
+            "meetingType must be one of: winback, renewal, discovery, upsell.",
             422,
         )
 
@@ -104,61 +98,9 @@ def normalize_generation_request(payload):
 
 
 def build_brief_context(customer, product, meeting_type, deliverable_type, notes):
-    usage = (
-        UsageSnapshot.query.filter_by(customer_id=customer.id, product_id=product.id)
-        .order_by(UsageSnapshot.snapshot_date.desc())
-        .first()
-    )
-    intelligence = (
-        IntelligenceSnapshot.query.filter_by(customer_id=customer.id)
-        .order_by(IntelligenceSnapshot.generated_at.desc())
-        .first()
-    )
-    recent_engagements = (
-        Engagement.query.filter_by(customer_id=customer.id, status="saved")
-        .order_by(Engagement.generated_at.desc())
-        .limit(5)
-        .all()
-    )
-
     return {
-        "customer": {
-            "id": str(customer.id),
-            "name": customer.name,
-            "industry": customer.industry,
-            "opportunityStage": customer.opportunity_stage,
-            "renewalDate": _iso(customer.renewal_date),
-            "status": customer.status,
-        },
-        "product": {"id": str(product.id), "name": product.name},
-        "latestUsage": None
-        if not usage
-        else {
-            "snapshotDate": _iso(usage.snapshot_date),
-            "activeUsers": usage.active_users,
-            "licensedSeats": usage.licensed_seats,
-            "licenseUtilization": _as_float(usage.license_utilization),
-            "usageGrowth": _as_float(usage.usage_growth),
-            "featureAdoption": usage.feature_adoption,
-        },
-        "latestIntelligence": None
-        if not intelligence
-        else {
-            "snapshotDate": _iso(intelligence.snapshot_date),
-            "nextBestActions": intelligence.next_best_actions or [],
-            "aiKeySignal": intelligence.ai_key_signal,
-            "metrics": intelligence.metrics,
-        },
-        "recentEngagements": [
-            {
-                "meetingType": item.meeting_type,
-                "deliverableType": item.deliverable_type,
-                "title": item.title,
-                "summary": item.summary,
-                "generatedAt": _iso(item.generated_at),
-            }
-            for item in recent_engagements
-        ],
+        "customerId": str(customer.id),
+        "productId": str(product.id),
         "request": {
             "meetingType": meeting_type,
             "deliverableType": deliverable_type,
@@ -176,39 +118,15 @@ def generate_brief(payload):
     content = generated["content"]
     now = datetime.now(timezone.utc)
 
-    engagement = Engagement(
-        customer_id=customer.id,
-        product_id=product.id,
-        created_by=customer.account_owner_id,
-        engagement_type="generated_brief",
-        meeting_type=meeting_type,
-        deliverable_type=deliverable_type,
-        occurred_at=now,
-        title=content["title"],
-        summary=content["summary"],
-        notes=notes or None,
-        content=content,
-        input_snapshot=context,
-        model=generated["model"],
-        prompt_version="meeting-brief-v1",
-        generated_at=now,
-        status="draft",
-    )
-    db.session.add(engagement)
-    db.session.commit()
-
     response = {
         **content,
-        "id": str(engagement.id),
-        "engagementId": str(engagement.id),
         "customerId": str(customer.id),
         "customerName": customer.name,
         "productId": str(product.id),
         "product": product.name,
-        "meetingType": meeting_type.upper() if meeting_type == "qbr" else meeting_type.title(),
+        "meetingType": meeting_type.title(),
         "deliverable": DELIVERABLE_LABELS[deliverable_type],
         "deliverableType": deliverable_type,
-        "status": engagement.status,
-        "generatedAt": _iso(engagement.generated_at),
+        "generatedAt": _iso(now),
     }
     return response

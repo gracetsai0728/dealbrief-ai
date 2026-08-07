@@ -1,16 +1,13 @@
 from datetime import date, datetime, time, timedelta, timezone
-from decimal import Decimal
 from uuid import uuid4
+
+from sqlalchemy import or_
 
 from ..errors import ApiError
 from ..extensions import db
-from ..models import Engagement, IntelligenceSnapshot, UsageSnapshot
+from ..models import IntelligenceSnapshot, Subscription
 from .brief_service import find_customer
 from .openai_service import generate_structured_intelligence
-
-
-def _number(value):
-    return float(value) if isinstance(value, Decimal) else value
 
 
 def _iso(value):
@@ -38,62 +35,27 @@ def _parse_boundary(value, field_name, end=False):
 
 
 def build_intelligence_context(customer, period_start, period_end):
-    usage_rows = (
-        UsageSnapshot.query.filter(
-            UsageSnapshot.customer_id == customer.id,
-            UsageSnapshot.snapshot_date >= period_start.date(),
-            UsageSnapshot.snapshot_date <= period_end.date(),
+    subscription_exists = (
+        Subscription.query.filter(
+            Subscription.customer_id == customer.id,
+            Subscription.subscription_start_date <= period_end.date(),
+            or_(
+                Subscription.subscription_end_date.is_(None),
+                Subscription.subscription_end_date >= period_start.date(),
+            ),
         )
-        .order_by(UsageSnapshot.snapshot_date.asc())
-        .all()
-    )
-    engagements = (
-        Engagement.query.filter(
-            Engagement.customer_id == customer.id,
-            Engagement.status == "saved",
-            Engagement.occurred_at >= period_start,
-            Engagement.occurred_at <= period_end,
-        )
-        .order_by(Engagement.occurred_at.asc())
-        .all()
+        .with_entities(Subscription.id)
+        .first()
+        is not None
     )
 
     return {
+        "customerId": str(customer.id),
         "analysisPeriod": {
             "start": _iso(period_start),
             "end": _iso(period_end),
         },
-        "customer": {
-            "id": str(customer.id),
-            "name": customer.name,
-            "industry": customer.industry,
-            "opportunityStage": customer.opportunity_stage,
-            "renewalDate": _iso(customer.renewal_date),
-            "status": customer.status,
-        },
-        "usageSnapshots": [
-            {
-                "product": item.product.name,
-                "snapshotDate": _iso(item.snapshot_date),
-                "activeUsers": item.active_users,
-                "licensedSeats": item.licensed_seats,
-                "licenseUtilization": _number(item.license_utilization),
-                "usageGrowth": _number(item.usage_growth),
-                "featureAdoption": item.feature_adoption,
-            }
-            for item in usage_rows
-        ],
-        "savedEngagements": [
-            {
-                "occurredAt": _iso(item.occurred_at),
-                "meetingType": item.meeting_type,
-                "product": item.product.name if item.product else None,
-                "title": item.title,
-                "summary": item.summary,
-                "notes": item.notes,
-            }
-            for item in engagements
-        ],
+        "hasSubscriptions": subscription_exists,
     }
 
 
@@ -115,50 +77,25 @@ def refresh_intelligence(customer_reference, payload=None):
         )
 
     context = build_intelligence_context(customer, period_start, period_end)
-    if not context["usageSnapshots"] and not context["savedEngagements"]:
+    if not context["hasSubscriptions"]:
         raise ApiError(
             "INSUFFICIENT_SOURCE_DATA",
-            "At least one usage snapshot or saved engagement is required.",
+            "At least one product subscription is required.",
             409,
         )
 
     generated = generate_structured_intelligence(context)
     content = generated["content"]
     generated_at = datetime.now(timezone.utc)
-    latest_engagement = max(
-        (
-            datetime.fromisoformat(item["occurredAt"])
-            for item in context["savedEngagements"]
-            if item["occurredAt"]
-        ),
-        default=None,
-    )
-    source_dates = [
-        datetime.combine(
-            date.fromisoformat(item["snapshotDate"]),
-            time.max,
-            tzinfo=timezone.utc,
-        )
-        for item in context["usageSnapshots"]
-    ]
-    if latest_engagement:
-        source_dates.append(latest_engagement)
 
-    actions = content["nextBestActions"]
     snapshot = IntelligenceSnapshot(
         id=uuid4(),
         customer_id=customer.id,
-        snapshot_date=generated_at.date(),
-        next_best_actions=actions,
+        recommended_next_steps=content["recommendedNextSteps"],
+        industry_dynamics=content["industryDynamics"],
+        company_news=content["companyNews"],
         ai_key_signal=content["aiKeySignal"],
-        last_interaction_at=latest_engagement,
         metrics=content["metrics"],
-        period_start=period_start,
-        period_end=period_end,
-        source_data_through=max(source_dates) if source_dates else None,
-        generation_status="completed",
-        model=generated["model"],
-        prompt_version="customer-intelligence-v1",
         generated_at=generated_at,
     )
     db.session.add(snapshot)

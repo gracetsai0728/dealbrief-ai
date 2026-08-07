@@ -3,8 +3,8 @@ info:
   title: DealBrief AI API
   version: 1.0.0
   description: |
-    Flask and PostgreSQL backend for customer imports, usage snapshots,
-    AI-generated customer intelligence, meeting briefs, and engagement logs.
+    Flask and PostgreSQL backend for customer product subscriptions,
+    AI-generated customer intelligence, and meeting briefs.
 
     Successful responses use `{ "data": ... }`. Error responses use
     `{ "error": { "code": "...", "message": "...", "details": null } }`.
@@ -15,17 +15,20 @@ servers:
     description: Local development server
 tags:
   - name: System
+  - name: Authentication
   - name: Customers
   - name: Products
-  - name: Usage
-  - name: Imports
+  - name: Subscriptions
   - name: Intelligence
   - name: Meeting Briefs
-  - name: Engagements
+
+security:
+  - sessionCookie: []
 
 paths:
   /health:
     get:
+      security: []
       tags: [System]
       summary: Check API and database health
       operationId: getHealth
@@ -38,6 +41,66 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
         "500":
           $ref: "#/components/responses/InternalError"
+
+  /auth/register:
+    post:
+      security: []
+      tags: [Authentication]
+      summary: Register a user account
+      description: All self-registered accounts receive the `user` role.
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: {type: string, maxLength: 100}
+                email: {type: string, format: email}
+                password: {type: string, minLength: 8}
+      responses:
+        "201": {description: Account created and session started.}
+        "409": {description: Email is already registered.}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+  /auth/login:
+    post:
+      security: []
+      tags: [Authentication]
+      summary: Sign in with email and password
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string, format: email}
+                password: {type: string}
+      responses:
+        "200": {description: Session started.}
+        "401": {description: Email or password is incorrect.}
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: End the current session
+      operationId: logoutUser
+      responses:
+        "200": {description: Session ended.}
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Return the signed-in user
+      operationId: getCurrentUser
+      responses:
+        "200": {description: Current user profile and role.}
+        "401": {description: Authentication is required.}
 
   /customers:
     get:
@@ -74,6 +137,25 @@ paths:
                       $ref: "#/components/schemas/Customer"
         "500":
           $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Customers]
+      summary: Add a customer
+      description: Administrator only.
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 200}
+                industry: {type: string}
+      responses:
+        "201": {description: Customer created.}
+        "403": {description: Administrator access is required.}
+        "422": {$ref: "#/components/responses/ValidationError"}
 
   /customers/{customerId}:
     delete:
@@ -109,7 +191,7 @@ paths:
         - $ref: "#/components/parameters/CustomerId"
       responses:
         "200":
-          description: Customer profile, latest usage by product, latest intelligence, and saved meetings.
+          description: Customer profile, latest subscriptions by product, and latest intelligence.
           content:
             application/json:
               schema:
@@ -118,6 +200,29 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/CustomerDashboard"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /customers/{customerId}/timeline:
+    get:
+      tags: [Subscriptions]
+      summary: Get licensed seats across subscription periods
+      operationId: getCustomerTimeline
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: One licensed-seat series per product, combining annual renewal records.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/SubscriptionTimeline"
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
@@ -143,12 +248,31 @@ paths:
                       $ref: "#/components/schemas/Product"
         "500":
           $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Products]
+      summary: Add a product
+      description: Administrator only.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 150}
+                description: {type: string}
+      responses:
+        "201": {description: Product created.}
+        "403": {description: Administrator access is required.}
+        "409": {description: Product name already exists.}
 
-  /usage:
+  /subscriptions:
     get:
-      tags: [Usage]
-      summary: List usage snapshots
-      operationId: listUsage
+      tags: [Subscriptions]
+      summary: List subscriptions
+      operationId: listSubscriptions
       parameters:
         - name: customerId
           in: query
@@ -159,7 +283,7 @@ paths:
           example: 30000000-0000-0000-0000-000000000001
       responses:
         "200":
-          description: Up to 500 usage snapshots ordered by date descending.
+          description: Up to 500 subscriptions ordered by start date descending.
           content:
             application/json:
               schema:
@@ -169,20 +293,46 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/UsageSnapshot"
+                      $ref: "#/components/schemas/Subscription"
         "422":
           $ref: "#/components/responses/ValidationError"
+    post:
+      tags: [Subscriptions]
+      summary: Add a customer product subscription
+      description: Administrator only.
+      operationId: createSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerId, productId, subscriptionStartDate]
+              properties:
+                customerId: {type: string, format: uuid}
+                productId: {type: string, format: uuid}
+                subscriptionStartDate: {type: string, format: date}
+                subscriptionEndDate: {type: string, format: date}
+                subscriptionStatus:
+                  type: string
+                  enum: [active, expired, canceled]
+                licensedSeats: {type: integer, minimum: 0}
+      responses:
+        "201": {description: Subscription created.}
+        "403": {description: Administrator access is required.}
+        "409": {description: The subscription already exists for this customer, product, and start date.}
+        "422": {$ref: "#/components/responses/ValidationError"}
 
-  /usage/{usageId}:
+  /subscriptions/{subscriptionId}:
     delete:
-      tags: [Usage]
-      summary: Permanently delete a usage snapshot
-      operationId: deleteUsage
+      tags: [Subscriptions]
+      summary: Permanently delete a subscription
+      operationId: deleteSubscription
       parameters:
-        - $ref: "#/components/parameters/UsageId"
+        - $ref: "#/components/parameters/SubscriptionId"
       responses:
         "200":
-          description: Usage snapshot was hard deleted.
+          description: Subscription was hard deleted.
           content:
             application/json:
               schema:
@@ -192,136 +342,6 @@ paths:
                   id: 40000000-0000-0000-0000-000000000001
                   deleted: true
                   deleteMode: hard
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-
-  /imports:
-    get:
-      tags: [Imports]
-      summary: List import jobs
-      operationId: listImportJobs
-      parameters:
-        - name: type
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [customers, usage]
-      responses:
-        "200":
-          description: Import jobs ordered by creation time descending.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/ImportJob"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-
-  /imports/{importJobId}:
-    get:
-      tags: [Imports]
-      summary: Get one import job
-      operationId: getImportJob
-      parameters:
-        - $ref: "#/components/parameters/ImportJobId"
-      responses:
-        "200":
-          description: Import job details and row errors.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ImportJob"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-
-  /imports/customers:
-    post:
-      tags: [Imports]
-      summary: Import customer rows
-      description: Creates an import job and inserts or updates customers by `salesforceAccountId`.
-      operationId: importCustomers
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CustomerImportRequest"
-            example:
-              filename: swagger-customers.json
-              rows:
-                - name: Swagger Demo Customer
-                  industry: Software
-                  accountOwner: Grace Lin
-                  salesforceAccountId: SWAGGER-DEMO-001
-                  opportunityStage: Discovery
-                  renewalDate: "2027-01-15"
-                  status: active
-      responses:
-        "201":
-          description: Import job completed; inspect row counts and error details.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ImportJob"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-
-  /imports/usage:
-    post:
-      tags: [Imports]
-      summary: Import usage rows
-      description: Upserts usage by customer, product, and snapshot date.
-      operationId: importUsage
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UsageImportRequest"
-            example:
-              filename: swagger-usage.json
-              rows:
-                - customerId: 30000000-0000-0000-0000-000000000001
-                  productId: 20000000-0000-0000-0000-000000000001
-                  snapshotDate: "2026-07-31"
-                  activeUsers: 420
-                  licensedSeats: 500
-                  licenseUtilization: 84
-                  usageGrowth: 36.5
-                  featureAdoption:
-                    Reporting: 62
-                    Automation: 45
-      responses:
-        "201":
-          description: Import job completed; inspect row counts and error details.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ImportJob"
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
@@ -380,7 +400,7 @@ paths:
       tags: [Intelligence]
       summary: Generate and save a new AI intelligence snapshot
       description: |
-        Uses stored usage and saved engagement records, calls OpenAI, validates
+        Uses stored subscription records, calls OpenAI, validates
         the structured result, and saves it to PostgreSQL.
       operationId: refreshIntelligence
       parameters:
@@ -408,7 +428,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: No usage or saved meeting data exists in the requested period.
+          description: No subscription exists in the requested period.
           content:
             application/json:
               schema:
@@ -419,8 +439,8 @@ paths:
   /generate-brief:
     post:
       tags: [Meeting Briefs]
-      summary: Generate an AI meeting brief and create a draft engagement
-      description: Calls OpenAI, validates structured output, and saves a draft engagement.
+      summary: Generate an AI meeting brief
+      description: Calls OpenAI and validates the structured output without saving a log.
       operationId: generateMeetingBrief
       requestBody:
         required: true
@@ -431,12 +451,12 @@ paths:
             example:
               customerId: 30000000-0000-0000-0000-000000000001
               productId: 20000000-0000-0000-0000-000000000001
-              meetingType: qbr
+              meetingType: winback
               deliverableType: call_brief
               notes: Focus on renewal value and reporting adoption.
       responses:
         "201":
-          description: Generated brief and draft engagement.
+          description: Generated brief.
           content:
             application/json:
               schema:
@@ -450,143 +470,12 @@ paths:
         "422":
           $ref: "#/components/responses/ValidationError"
 
-  /engagement-log:
-    get:
-      tags: [Engagements]
-      summary: List saved engagement records
-      operationId: listEngagements
-      parameters:
-        - name: customerId
-          in: query
-          required: false
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Up to 100 saved engagement records.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Engagement"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-    post:
-      tags: [Engagements]
-      summary: Save a draft engagement to the customer timeline
-      operationId: saveEngagement
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SaveEngagementRequest"
-            example:
-              engagementId: 50000000-0000-0000-0000-000000000001
-      responses:
-        "200":
-          description: Engagement status changed to saved.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: "#/components/schemas/EngagementDetail"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          description: Archived engagements cannot be saved.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-
-  /engagement-log/{engagementId}:
-    get:
-      tags: [Engagements]
-      summary: Get one engagement
-      operationId: getEngagement
-      parameters:
-        - $ref: "#/components/parameters/EngagementId"
-      responses:
-        "200":
-          description: Engagement with generated content and input snapshot.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: "#/components/schemas/EngagementDetail"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-    patch:
-      tags: [Engagements]
-      summary: Update engagement status
-      operationId: updateEngagement
-      parameters:
-        - $ref: "#/components/parameters/EngagementId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateEngagementRequest"
-            example:
-              status: saved
-      responses:
-        "200":
-          description: Updated engagement.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: "#/components/schemas/EngagementDetail"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-    delete:
-      tags: [Engagements]
-      summary: Archive an engagement
-      operationId: deleteEngagement
-      parameters:
-        - $ref: "#/components/parameters/EngagementId"
-      responses:
-        "200":
-          description: Engagement status changed to archived.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DeleteResponse"
-              example:
-                data:
-                  id: 50000000-0000-0000-0000-000000000001
-                  deleted: true
-                  deleteMode: archive
-                  status: archived
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
   parameters:
     CustomerId:
       name: customerId
@@ -596,29 +485,14 @@ components:
         type: string
         format: uuid
       example: 30000000-0000-0000-0000-000000000001
-    UsageId:
-      name: usageId
+    SubscriptionId:
+      name: subscriptionId
       in: path
       required: true
       schema:
         type: string
         format: uuid
       example: 40000000-0000-0000-0000-000000000001
-    ImportJobId:
-      name: importJobId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    EngagementId:
-      name: engagementId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-
   responses:
     ValidationError:
       description: Request parameters or JSON are invalid.
@@ -680,26 +554,12 @@ components:
             details:
               nullable: true
 
-    AccountOwner:
-      type: object
-      required: [id, name]
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-
     Customer:
       type: object
       required:
         - id
         - name
         - industry
-        - accountOwner
-        - salesforceAccountId
-        - opportunityStage
-        - renewalDate
         - status
       properties:
         id:
@@ -710,19 +570,6 @@ components:
         industry:
           type: string
           nullable: true
-        accountOwner:
-          allOf:
-            - $ref: "#/components/schemas/AccountOwner"
-          nullable: true
-        salesforceAccountId:
-          type: string
-        opportunityStage:
-          type: string
-          nullable: true
-        renewalDate:
-          type: string
-          format: date
-          nullable: true
         status:
           type: string
           enum: [active, pilot, inactive]
@@ -730,12 +577,6 @@ components:
         id: 30000000-0000-0000-0000-000000000001
         name: ABC Bank
         industry: Financial Services
-        accountOwner:
-          id: 10000000-0000-0000-0000-000000000001
-          name: Grace Lin
-        salesforceAccountId: SF-ACCT-1042
-        opportunityStage: Renewal Review
-        renewalDate: "2026-10-15"
         status: active
 
     Product:
@@ -758,7 +599,7 @@ components:
         description: Pipeline, account, and sales workflow management.
         status: active
 
-    UsageSnapshot:
+    Subscription:
       type: object
       required:
         - id
@@ -766,12 +607,9 @@ components:
         - customerName
         - productId
         - productName
-        - snapshotDate
-        - activeUsers
+        - subscriptionStartDate
+        - subscriptionStatus
         - licensedSeats
-        - licenseUtilization
-        - usageGrowth
-        - featureAdoption
       properties:
         id:
           type: string
@@ -786,41 +624,30 @@ components:
           format: uuid
         productName:
           type: string
-        snapshotDate:
+        subscriptionStartDate:
           type: string
           format: date
-        activeUsers:
-          type: integer
-          minimum: 0
+        subscriptionEndDate:
+          type: string
+          format: date
+          nullable: true
+        subscriptionStatus:
+          type: string
+          enum: [active, expired, canceled]
         licensedSeats:
           type: integer
           minimum: 0
           nullable: true
-        licenseUtilization:
-          type: number
-          nullable: true
-        usageGrowth:
-          type: number
-          nullable: true
-        featureAdoption:
-          type: object
-          additionalProperties:
-            type: number
-            nullable: true
       example:
         id: 40000000-0000-0000-0000-000000000001
         customerId: 30000000-0000-0000-0000-000000000001
         customerName: ABC Bank
         productId: 20000000-0000-0000-0000-000000000001
         productName: CRM Platform
-        snapshotDate: "2026-07-04"
-        activeUsers: 410
+        subscriptionStartDate: "2026-01-01"
+        subscriptionEndDate: "2026-12-31"
+        subscriptionStatus: active
         licensedSeats: 500
-        licenseUtilization: 82
-        usageGrowth: 35
-        featureAdoption:
-          Reporting: 58
-          Automation: 42
 
     RecommendedAction:
       type: object
@@ -838,34 +665,62 @@ components:
           format: date
           nullable: true
 
+    RecommendedNextSteps:
+      type: object
+      required: [crossSell, upsell, renewal, winback]
+      properties:
+        crossSell:
+          type: array
+          items: {$ref: "#/components/schemas/RecommendedAction"}
+        upsell:
+          type: array
+          items: {$ref: "#/components/schemas/RecommendedAction"}
+        renewal:
+          type: array
+          items: {$ref: "#/components/schemas/RecommendedAction"}
+        winback:
+          type: array
+          items: {$ref: "#/components/schemas/RecommendedAction"}
+
+    IndustryDynamic:
+      type: object
+      required: [headline, summary, impact]
+      properties:
+        headline: {type: string}
+        summary: {type: string}
+        impact: {type: string}
+
+    CompanyNewsItem:
+      type: object
+      required: [headline, summary, sourceName, sourceUrl, publishedDate]
+      properties:
+        headline: {type: string}
+        summary: {type: string}
+        sourceName: {type: string}
+        sourceUrl: {type: string, format: uri}
+        publishedDate:
+          type: string
+          format: date
+          nullable: true
+
     IntelligenceMetrics:
       type: object
       required:
         - accountHealthScore
-        - adoptionScore
-        - engagementScore
-        - usageGrowth
-        - licenseUtilization
+        - totalLicensedSeats
+        - activeSubscriptions
         - riskReasons
       properties:
         accountHealthScore:
           type: integer
           minimum: 0
           maximum: 100
-        adoptionScore:
+        totalLicensedSeats:
           type: integer
           minimum: 0
-          maximum: 100
-        engagementScore:
+        activeSubscriptions:
           type: integer
           minimum: 0
-          maximum: 100
-        usageGrowth:
-          type: number
-          nullable: true
-        licenseUtilization:
-          type: number
-          nullable: true
         riskReasons:
           type: array
           items:
@@ -875,292 +730,100 @@ components:
       type: object
       required:
         - id
-        - snapshotDate
         - aiKeySignal
-        - nextBestActions
+        - industryDynamics
+        - companyNews
+        - recommendedNextSteps
         - metrics
-        - generationStatus
-        - model
         - generatedAt
       properties:
         id:
           type: string
           format: uuid
-        snapshotDate:
-          type: string
-          format: date
         aiKeySignal:
           type: string
-        nextBestActions:
+        industryDynamics:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/IndustryDynamic"
+        companyNews:
           type: array
           items:
-            $ref: "#/components/schemas/RecommendedAction"
+            $ref: "#/components/schemas/CompanyNewsItem"
+        recommendedNextSteps:
+          $ref: "#/components/schemas/RecommendedNextSteps"
         metrics:
           $ref: "#/components/schemas/IntelligenceMetrics"
-        periodStart:
-          type: string
-          format: date-time
-          nullable: true
-        periodEnd:
-          type: string
-          format: date-time
-          nullable: true
-        sourceDataThrough:
-          type: string
-          format: date-time
-          nullable: true
-        generationStatus:
-          type: string
-        model:
-          type: string
-          nullable: true
         generatedAt:
           type: string
           format: date-time
-
-    Engagement:
-      type: object
-      required:
-        - id
-        - customerId
-        - customerName
-        - productId
-        - product
-        - meetingType
-        - deliverableType
-        - title
-        - summary
-        - meetingSummary
-        - status
-        - generatedAt
-        - date
-        - generatedBy
-      properties:
-        id:
-          type: string
-          format: uuid
-        customerId:
-          type: string
-          format: uuid
-        customerName:
-          type: string
-        productId:
-          type: string
-          format: uuid
-          nullable: true
-        product:
-          type: string
-          nullable: true
-        meetingType:
-          type: string
-          enum: [qbr, renewal, discovery, upsell]
-        deliverableType:
-          type: string
-          enum: [call_brief, email_draft, meeting_agenda]
-        title:
-          type: string
-        summary:
-          type: string
-        meetingSummary:
-          type: string
-        status:
-          type: string
-          enum: [draft, saved, archived]
-        generatedAt:
-          type: string
-          format: date-time
-        date:
-          type: string
-          format: date-time
-        generatedBy:
-          type: string
-
-    EngagementDetail:
-      allOf:
-        - $ref: "#/components/schemas/Engagement"
-        - type: object
-          properties:
-            notes:
-              type: string
-              nullable: true
-            content:
-              type: object
-              additionalProperties: true
-            inputSnapshot:
-              type: object
-              additionalProperties: true
-            model:
-              type: string
-              nullable: true
-            promptVersion:
-              type: string
-              nullable: true
-
-    ImportError:
-      type: object
-      required: [row, message]
-      properties:
-        row:
-          type: integer
-        message:
-          type: string
-
-    ImportJob:
-      type: object
-      required:
-        - id
-        - importType
-        - filename
-        - status
-        - totalRows
-        - insertedRows
-        - updatedRows
-        - failedRows
-        - errorDetails
-        - uploadedBy
-        - createdAt
-        - completedAt
-      properties:
-        id:
-          type: string
-          format: uuid
-        importType:
-          type: string
-          enum: [customers, usage]
-        filename:
-          type: string
-        status:
-          type: string
-          enum: [processing, completed, failed]
-        totalRows:
-          type: integer
-        insertedRows:
-          type: integer
-        updatedRows:
-          type: integer
-        failedRows:
-          type: integer
-        errorDetails:
-          type: array
-          items:
-            $ref: "#/components/schemas/ImportError"
-        uploadedBy:
-          allOf:
-            - $ref: "#/components/schemas/AccountOwner"
-          nullable: true
-        createdAt:
-          type: string
-          format: date-time
-        completedAt:
-          type: string
-          format: date-time
-          nullable: true
 
     CustomerDashboard:
       type: object
-      required: [customer, latestUsage, intelligence, engagementTimeline]
+      required: [customer, latestSubscriptions, intelligence]
       properties:
         customer:
           $ref: "#/components/schemas/Customer"
-        latestUsage:
+        latestSubscriptions:
           type: array
           items:
-            $ref: "#/components/schemas/UsageSnapshot"
+            $ref: "#/components/schemas/Subscription"
         intelligence:
           allOf:
             - $ref: "#/components/schemas/IntelligenceSnapshot"
           nullable: true
-        engagementTimeline:
-          type: array
-          items:
-            $ref: "#/components/schemas/Engagement"
 
-    CustomerImportRow:
+    SubscriptionSeatPoint:
       type: object
-      required: [name, salesforceAccountId]
+      required: [date, seats]
       properties:
-        name:
-          type: string
-        industry:
-          type: string
-        accountOwner:
-          type: string
-          description: Existing user name, email, or UUID.
-        salesforceAccountId:
-          type: string
-        opportunityStage:
-          type: string
-        renewalDate:
+        date: {type: string, format: date}
+        seats: {type: integer, minimum: 0}
+
+    SubscriptionTimelineSeries:
+      type: object
+      required: [subscriptionId, productId, productName, startDate, endDate, status, licensedSeats, seatPoints]
+      properties:
+        subscriptionId: {type: string, format: uuid}
+        productId: {type: string, format: uuid}
+        productName: {type: string}
+        startDate: {type: string, format: date}
+        endDate:
           type: string
           format: date
+          nullable: true
         status:
           type: string
-          enum: [active, pilot, inactive]
-
-    CustomerImportRequest:
-      type: object
-      required: [rows]
-      properties:
-        filename:
-          type: string
-          maxLength: 255
-          default: api-import.json
-        uploadedBy:
-          type: string
-          format: uuid
-        rows:
-          type: array
-          minItems: 1
-          maxItems: 5000
-          items:
-            $ref: "#/components/schemas/CustomerImportRow"
-
-    UsageImportRow:
-      type: object
-      required: [customerId, productId, snapshotDate, activeUsers]
-      properties:
-        customerId:
-          type: string
-          format: uuid
-        productId:
-          type: string
-          format: uuid
-        snapshotDate:
-          type: string
-          format: date
-        activeUsers:
-          type: integer
-          minimum: 0
+          enum: [active, expired, canceled]
         licensedSeats:
           type: integer
           minimum: 0
-        licenseUtilization:
-          type: number
-        usageGrowth:
-          type: number
-        featureAdoption:
-          type: object
-          additionalProperties:
-            type: number
-            nullable: true
-
-    UsageImportRequest:
-      type: object
-      required: [rows]
-      properties:
-        filename:
-          type: string
-          maxLength: 255
-          default: api-import.json
-        uploadedBy:
-          type: string
-          format: uuid
-        rows:
+          nullable: true
+        seatPoints:
           type: array
-          minItems: 1
-          maxItems: 5000
           items:
-            $ref: "#/components/schemas/UsageImportRow"
+            $ref: "#/components/schemas/SubscriptionSeatPoint"
+
+    SubscriptionTimeline:
+      type: object
+      required: [customer, periodStart, periodEnd, series]
+      properties:
+        customer:
+          $ref: "#/components/schemas/Customer"
+        periodStart:
+          type: string
+          format: date
+          nullable: true
+        periodEnd:
+          type: string
+          format: date
+          nullable: true
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubscriptionTimelineSeries"
 
     IntelligenceRefreshRequest:
       type: object
@@ -1186,7 +849,7 @@ components:
           description: Product UUID or exact product name.
         meetingType:
           type: string
-          enum: [qbr, renewal, discovery, upsell]
+          enum: [winback, renewal, discovery, upsell]
         deliverableType:
           type: string
           enum: [call_brief, email_draft, meeting_agenda]
@@ -1241,8 +904,6 @@ components:
     GeneratedBrief:
       type: object
       required:
-        - id
-        - engagementId
         - customerId
         - customerName
         - productId
@@ -1250,17 +911,10 @@ components:
         - meetingType
         - deliverable
         - deliverableType
-        - status
         - title
         - summary
         - generatedAt
       properties:
-        id:
-          type: string
-          format: uuid
-        engagementId:
-          type: string
-          format: uuid
         customerId:
           type: string
           format: uuid
@@ -1278,9 +932,6 @@ components:
         deliverableType:
           type: string
           enum: [call_brief, email_draft, meeting_agenda]
-        status:
-          type: string
-          enum: [draft]
         title:
           type: string
         summary:
@@ -1315,22 +966,6 @@ components:
         agenda:
           $ref: "#/components/schemas/AgendaContent"
 
-    SaveEngagementRequest:
-      type: object
-      required: [engagementId]
-      properties:
-        engagementId:
-          type: string
-          format: uuid
-
-    UpdateEngagementRequest:
-      type: object
-      required: [status]
-      properties:
-        status:
-          type: string
-          enum: [draft, saved, archived]
-
     DeleteResponse:
       type: object
       required: [data]
@@ -1346,7 +981,7 @@ components:
               type: boolean
             deleteMode:
               type: string
-              enum: [soft, hard, archive]
+              enum: [soft, hard]
             deletedAt:
               type: string
               format: date-time
