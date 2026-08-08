@@ -47,7 +47,13 @@ OPENAI_BRIEF_MODEL=gpt-5.6-terra
 OPENAI_INTELLIGENCE_MODEL=gpt-5.6-terra
 SECRET_KEY=replace-with-a-long-random-secret
 SESSION_COOKIE_SECURE=false
+SESSION_COOKIE_SAMESITE=Lax
 ```
+
+For a separately hosted HTTPS frontend, set `SESSION_COOKIE_SECURE=true` and
+`SESSION_COOKIE_SAMESITE=None` on the backend so authenticated cross-site API
+requests can include the session cookie. Keep the local defaults shown above
+for HTTP development.
 
 For a new or existing PostgreSQL database, run `database/schema.sql`, followed
 by the optional `database/seed.sql` demo data. For example:
@@ -132,7 +138,7 @@ customer data.
 ## Documentation and submission artifacts
 
 - [API specification](docs/api-specification.md)
-- [OpenAPI definition](docs/openapi.yaml)
+- [OpenAPI definition](backend/app/openapi.yaml)
 - [Database design](docs/database-design.md)
 - [API test cases](docs/api-test-cases.md)
 - [Actual test results](docs/api-test-results.md)

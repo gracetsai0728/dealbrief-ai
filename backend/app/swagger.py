@@ -5,8 +5,7 @@ from flask import Blueprint, Response, send_file, url_for
 
 swagger = Blueprint("swagger", __name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-OPENAPI_SPEC_PATH = PROJECT_ROOT / "docs" / "openapi.yaml"
+OPENAPI_SPEC_PATH = Path(__file__).with_name("openapi.yaml")
 
 
 @swagger.get("/openapi.yaml")

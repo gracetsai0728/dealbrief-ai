@@ -1,3 +1,4 @@
+# Bundled with the Flask app so backend-only deployments include the API spec.
 openapi: 3.0.3
 info:
   title: DealBrief AI API
