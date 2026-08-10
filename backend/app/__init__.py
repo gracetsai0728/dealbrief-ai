@@ -1,5 +1,8 @@
-from flask import Flask, jsonify
+from pathlib import Path
+
+from flask import Flask, abort, jsonify, send_from_directory
 from flask_cors import CORS
+from werkzeug.utils import safe_join
 
 from .config import Config
 from .errors import ApiError
@@ -8,8 +11,11 @@ from .routes import api
 from .swagger import swagger
 
 
+FRONTEND_DIST = Path(__file__).resolve().parent / "frontend_dist"
+
+
 def create_app(config_object=Config):
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=None)
     app.config.from_object(config_object)
 
     db.init_app(app)
@@ -20,6 +26,25 @@ def create_app(config_object=Config):
     )
     app.register_blueprint(api, url_prefix="/api")
     app.register_blueprint(swagger, url_prefix="/api")
+
+    @app.get("/")
+    def frontend_index():
+        return send_from_directory(FRONTEND_DIST, "index.html")
+
+    @app.get("/<path:path>")
+    def frontend_files(path):
+        # Unknown API URLs should keep returning the API's JSON 404 response
+        # instead of falling back to the React application.
+        if path == "api" or path.startswith("api/"):
+            abort(404)
+
+        requested_file = safe_join(str(FRONTEND_DIST), path)
+        if requested_file and Path(requested_file).is_file():
+            return send_from_directory(FRONTEND_DIST, path)
+
+        # Support client-side routing by returning the React entry point for
+        # any non-API path that is not a built asset.
+        return send_from_directory(FRONTEND_DIST, "index.html")
 
     @app.errorhandler(ApiError)
     def handle_api_error(error):
