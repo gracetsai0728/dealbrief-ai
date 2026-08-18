@@ -60,13 +60,12 @@ jobs:
           name: dealbrief-app
           path: release
 
-      # 保留 Azure 自動產生的 Login to Azure 步驟
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.由_Azure_產生的名稱 }}
-          tenant-id: ${{ secrets.由_Azure_產生的名稱 }}
-          subscription-id: ${{ secrets.由_Azure_產生的名稱 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_8185FA2332D64D66A51B0F4E5393BF40 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3EB6BD54E1534595997A23D38B890EC7 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_46C3A97EB6404903A7EB3D16BB86D772 }}
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
