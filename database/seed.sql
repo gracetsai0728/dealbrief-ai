@@ -266,7 +266,7 @@ VALUES
         '{
           "crossSell": [{"action": "Evaluate the Collaboration Tool", "priority": "medium", "reason": "ABC Bank subscribes to CRM and Analytics but not Collaboration.", "dueDate": null}],
           "upsell": [{"action": "Review licensed seat capacity", "priority": "medium", "reason": "The account currently holds 800 seats across two products.", "dueDate": null}],
-          "renewal": [{"action": "Prepare a quantified subscription value review", "priority": "high", "reason": "Both subscriptions are active and have defined renewal dates.", "dueDate": null}],
+          "renewal": [{"action": "Prepare a quantified subscription value review", "priority": "medium", "reason": "The subscriptions are active, but the next renewal is outside the highest-urgency window.", "dueDate": null}],
           "winback": [{"action": "Monitor inactive teams before outreach", "priority": "low", "reason": "No current product is canceled.", "dueDate": null}]
         }'::JSONB,
         '[{
@@ -280,16 +280,20 @@ VALUES
         }]'::JSONB,
         '[{
           "headline": "ABC Bank launches a digital onboarding modernization initiative",
-          "summary": "The demo scenario describes a phased program to simplify customer onboarding and connect service workflows.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/abc-bank-digital-onboarding",
-          "publishedDate": "2026-07-18"
+          "summary": "Synthetic demo scenario — not real company news. This fictional program would simplify customer onboarding and connect service workflows.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-07-18",
+          "sourceType": "synthetic",
+          "isMock": true
         }, {
           "headline": "ABC Bank expands its enterprise data governance program",
-          "summary": "The mock announcement highlights stronger analytics controls, audit processes, and shared data standards.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/abc-bank-data-governance",
-          "publishedDate": "2026-06-24"
+          "summary": "Synthetic demo scenario — not real company news. This fictional announcement highlights stronger analytics controls, audit processes, and shared data standards.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-06-24",
+          "sourceType": "synthetic",
+          "isMock": true
         }]'::JSONB,
         'ABC Bank has 800 licensed seats across two active product subscriptions.',
         '{
@@ -304,9 +308,9 @@ VALUES
         '50000000-0000-0000-0000-000000000002',
         (SELECT id FROM customers WHERE name = 'Northstar Retail'),
         '{
-          "crossSell": [{"action": "Connect store collaboration data to analytics workflows", "priority": "medium", "reason": "Northstar holds all three product subscriptions.", "dueDate": null}],
+          "crossSell": [{"action": "Hold cross-sell outreach and focus on portfolio value", "priority": "low", "reason": "Northstar already holds all three active products, so no never-purchased product gap exists.", "dueDate": null}],
           "upsell": [{"action": "Review capacity for expanding retail teams", "priority": "high", "reason": "The account has 2,157 licensed seats across its portfolio.", "dueDate": null}],
-          "renewal": [{"action": "Document subscription value across stores", "priority": "medium", "reason": "All three products are active with upcoming renewal dates.", "dueDate": null}],
+          "renewal": [{"action": "Document subscription value across stores", "priority": "high", "reason": "The large active portfolio and upcoming renewal window make value documentation strategically important.", "dueDate": null}],
           "winback": [{"action": "Monitor product coverage before targeted outreach", "priority": "low", "reason": "No subscription is currently canceled.", "dueDate": null}]
         }'::JSONB,
         '[{
@@ -320,16 +324,20 @@ VALUES
         }]'::JSONB,
         '[{
           "headline": "Northstar Retail pilots a unified inventory command center",
-          "summary": "The demo retailer is testing shared dashboards that connect store activity, inventory signals, and forecasting.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/northstar-inventory-command-center",
-          "publishedDate": "2026-07-22"
+          "summary": "Synthetic demo scenario — not real company news. This fictional pilot connects store activity, inventory signals, and forecasting through shared dashboards.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-07-22",
+          "sourceType": "synthetic",
+          "isMock": true
         }, {
           "headline": "Northstar Retail expands its store collaboration rollout",
-          "summary": "The mock update describes a broader deployment of standardized workflows across regional store teams.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/northstar-store-collaboration",
-          "publishedDate": "2026-06-30"
+          "summary": "Synthetic demo scenario — not real company news. This fictional update describes standardized workflows expanding across regional store teams.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-06-30",
+          "sourceType": "synthetic",
+          "isMock": true
         }]'::JSONB,
         'Northstar has the largest seat footprint with 2,157 seats across three active subscriptions.',
         '{
@@ -344,10 +352,10 @@ VALUES
         '50000000-0000-0000-0000-000000000003',
         (SELECT id FROM customers WHERE name = 'GreenHealth Group'),
         '{
-          "crossSell": [{"action": "Introduce Collaboration for pilot teams", "priority": "medium", "reason": "The customer currently subscribes only to CRM.", "dueDate": null}],
+          "crossSell": [{"action": "Validate CRM pilot value before introducing another product", "priority": "low", "reason": "Product gaps exist, but the small pilot footprint and distant renewal reduce immediate urgency.", "dueDate": null}],
           "upsell": [{"action": "Review CRM seat expansion after the pilot", "priority": "low", "reason": "The current CRM subscription contains 200 licensed seats.", "dueDate": null}],
-          "renewal": [{"action": "Create a focused CRM pilot success plan", "priority": "high", "reason": "The customer is still in pilot status with one active subscription.", "dueDate": null}],
-          "winback": [{"action": "Monitor the pilot for disengagement", "priority": "medium", "reason": "Pilot status creates a higher risk of future contraction.", "dueDate": null}]
+          "renewal": [{"action": "Create a focused CRM pilot success plan", "priority": "low", "reason": "The single 200-seat subscription is active and remains outside the immediate renewal window.", "dueDate": null}],
+          "winback": [{"action": "Monitor the pilot for disengagement", "priority": "low", "reason": "No product is currently expired or canceled, so there is no eligible winback motion.", "dueDate": null}]
         }'::JSONB,
         '[{
           "headline": "Healthcare organizations are emphasizing measurable technology adoption",
@@ -360,16 +368,20 @@ VALUES
         }]'::JSONB,
         '[{
           "headline": "GreenHealth Group begins a CRM-enabled patient services pilot",
-          "summary": "The demo pilot connects service requests and follow-up workflows for a limited group of care teams.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/greenhealth-patient-services-pilot",
-          "publishedDate": "2026-07-15"
+          "summary": "Synthetic demo scenario — not real company news. This fictional pilot connects service requests and follow-up workflows for a limited group of care teams.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-07-15",
+          "sourceType": "synthetic",
+          "isMock": true
         }, {
           "headline": "GreenHealth Group forms a digital workflow governance council",
-          "summary": "The mock council will review access controls, adoption measures, and operational outcomes for new platforms.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/greenhealth-governance-council",
-          "publishedDate": "2026-06-19"
+          "summary": "Synthetic demo scenario — not real company news. This fictional council would review access controls, adoption measures, and operational outcomes for new platforms.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-06-19",
+          "sourceType": "synthetic",
+          "isMock": true
         }]'::JSONB,
         'GreenHealth has 200 licensed CRM seats while remaining in pilot status.',
         '{
@@ -400,16 +412,20 @@ VALUES
         }]'::JSONB,
         '[{
           "headline": "Summit Manufacturing opens a connected operations program",
-          "summary": "The demo program links production reporting with faster planning and exception-management workflows.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/summit-connected-operations",
-          "publishedDate": "2026-07-25"
+          "summary": "Synthetic demo scenario — not real company news. This fictional program links production reporting with faster planning and exception-management workflows.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-07-25",
+          "sourceType": "synthetic",
+          "isMock": true
         }, {
           "headline": "Summit Manufacturing expands its predictive planning initiative",
-          "summary": "The mock initiative uses shared operational analytics to identify capacity risks earlier.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/summit-predictive-planning",
-          "publishedDate": "2026-06-27"
+          "summary": "Synthetic demo scenario — not real company news. This fictional initiative uses shared operational analytics to identify capacity risks earlier.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-06-27",
+          "sourceType": "synthetic",
+          "isMock": true
         }]'::JSONB,
         'Summit maintains 550 licensed seats across two active product subscriptions.',
         '{
@@ -440,16 +456,20 @@ VALUES
         }]'::JSONB,
         '[{
           "headline": "BrightPath Education launches a coordinated student support program",
-          "summary": "The demo program gives staff shared workflows for tracking service requests and follow-up actions.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/brightpath-student-support",
-          "publishedDate": "2026-07-20"
+          "summary": "Synthetic demo scenario — not real company news. This fictional program gives staff shared workflows for tracking service requests and follow-up actions.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-07-20",
+          "sourceType": "synthetic",
+          "isMock": true
         }, {
           "headline": "BrightPath Education expands analytics for retention planning",
-          "summary": "The mock update describes new dashboards intended to help teams coordinate earlier student interventions.",
-          "sourceName": "Demo Newswire (Mock)",
-          "sourceUrl": "https://example.com/dealbrief-demo/brightpath-retention-analytics",
-          "publishedDate": "2026-06-21"
+          "summary": "Synthetic demo scenario — not real company news. This fictional update describes dashboards intended to help teams coordinate earlier student interventions.",
+          "sourceName": "DealBrief Synthetic Scenario",
+          "sourceUrl": null,
+          "publishedDate": "2026-06-21",
+          "sourceType": "synthetic",
+          "isMock": true
         }]'::JSONB,
         'BrightPath has 925 licensed seats across two active subscriptions.',
         '{

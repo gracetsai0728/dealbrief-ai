@@ -49,7 +49,7 @@ class DatabaseApiIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = create_app()
-        cls.app.config.update(TESTING=True)
+        cls.app.config.update(TESTING=True, INTELLIGENCE_NEWS_MODE="hybrid")
         cls.client = cls.app.test_client()
         cls._cleanup()
         login_response = cls.client.post(
@@ -432,11 +432,18 @@ class DatabaseApiIntegrationTests(unittest.TestCase):
             len(intelligence_response.get_json()["data"]["industryDynamics"]),
             2,
         )
+        company_news = intelligence_response.get_json()["data"]["companyNews"]
+        self.assertEqual(len(company_news), 2)
+        self.assertTrue(all(item["isMock"] for item in company_news))
+        self.assertTrue(all(item["sourceType"] == "synthetic" for item in company_news))
+        self.assertTrue(all(item["sourceUrl"] is None for item in company_news))
         self.assertEqual(
             intelligence_response.get_json()["data"]["recommendedNextSteps"]["renewal"][0][
                 "priority"
             ],
-            "high",
+            # The deterministic rules engine overrides the AI placeholder. This
+            # 100-seat contract is 153 days from renewal, so it scores medium.
+            "medium",
         )
         intelligence_data = intelligence_response.get_json()["data"]
         for removed_field in {

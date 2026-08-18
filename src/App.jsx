@@ -621,13 +621,16 @@ function CustomerIntelligencePage({
       <section className="intelligence-block">
         <IntelligenceSectionHeader
           title="Recent Company News"
-          subtitle="Public sources found during the latest intelligence refresh."
+          subtitle="Public sources when available; clearly labeled synthetic scenarios for demo accounts."
         />
         <div className="news-list">
           {intelligence?.companyNews?.length ? intelligence.companyNews.map((item, index) => (
             <article className="news-card" key={`${item.headline}-${index}`}>
               <div>
-                <span>{item.publishedDate ? formatDate(item.publishedDate) : 'Recent'}</span>
+                <div className="news-meta">
+                  <span>{item.publishedDate ? formatDate(item.publishedDate) : 'Recent'}</span>
+                  {item.isMock && <span className="synthetic-news-badge">Synthetic demo</span>}
+                </div>
                 <h3>{item.headline}</h3>
                 <p>{item.summary}</p>
               </div>

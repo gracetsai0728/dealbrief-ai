@@ -23,6 +23,10 @@ class Config:
         "OPENAI_INTELLIGENCE_MODEL",
         os.getenv("OPENAI_BRIEF_MODEL", "gpt-5.6-terra"),
     )
+    INTELLIGENCE_NEWS_MODE = os.getenv(
+        "INTELLIGENCE_NEWS_MODE",
+        "hybrid",
+    ).strip().lower()
     CORS_ORIGINS = [
         origin.strip()
         for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")

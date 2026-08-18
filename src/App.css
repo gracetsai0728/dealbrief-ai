@@ -1310,9 +1310,30 @@ td {
   display: block;
 }
 
+.news-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .news-card span {
   color: #7a898e;
   font-size: 0.82rem;
+}
+
+.news-card .synthetic-news-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid #d9a441;
+  border-radius: 999px;
+  color: #713f12;
+  background: #fef3c7;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .action-grid {

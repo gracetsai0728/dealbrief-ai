@@ -45,10 +45,17 @@ CORS_ORIGINS=http://localhost:5173
 OPENAI_API_KEY=YOUR_OPENAI_API_KEY
 OPENAI_BRIEF_MODEL=gpt-5.6-terra
 OPENAI_INTELLIGENCE_MODEL=gpt-5.6-terra
+# real, hybrid, or mock
+INTELLIGENCE_NEWS_MODE=hybrid
 SECRET_KEY=replace-with-a-long-random-secret
 SESSION_COOKIE_SECURE=false
 SESSION_COOKIE_SAMESITE=Lax
 ```
+
+`INTELLIGENCE_NEWS_MODE=hybrid` searches for reliable company news first. For
+demo customers with no reliable public coverage, it generates two clearly
+labeled synthetic scenarios without fake publication URLs. Use `real` to return
+only verified web results, or `mock` to always use synthetic demo scenarios.
 
 For a separately hosted HTTPS frontend, set `SESSION_COOKIE_SECURE=true` and
 `SESSION_COOKIE_SAMESITE=None` on the backend so authenticated cross-site API

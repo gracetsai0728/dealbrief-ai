@@ -693,16 +693,30 @@ components:
 
     CompanyNewsItem:
       type: object
-      required: [headline, summary, sourceName, sourceUrl, publishedDate]
+      required:
+        - headline
+        - summary
+        - sourceName
+        - sourceUrl
+        - publishedDate
+        - sourceType
+        - isMock
       properties:
         headline: {type: string}
         summary: {type: string}
         sourceName: {type: string}
-        sourceUrl: {type: string, format: uri}
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
         publishedDate:
           type: string
           format: date
           nullable: true
+        sourceType:
+          type: string
+          enum: [web, synthetic]
+        isMock: {type: boolean}
 
     IntelligenceMetrics:
       type: object

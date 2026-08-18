@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
@@ -76,8 +76,28 @@ class CompanyNewsItem(StrictModel):
     headline: str
     summary: str
     sourceName: str
-    sourceUrl: str
+    sourceUrl: str | None
     publishedDate: str | None
+    sourceType: Literal["web", "synthetic"]
+    isMock: bool
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_news(cls, value):
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        source_name = str(normalized.get("sourceName") or "")
+        inferred_mock = (
+            bool(normalized.get("isMock"))
+            or "mock" in source_name.lower()
+            or "synthetic" in source_name.lower()
+        )
+        normalized.setdefault("sourceType", "synthetic" if inferred_mock else "web")
+        normalized.setdefault("isMock", inferred_mock)
+        if normalized["isMock"]:
+            normalized["sourceUrl"] = None
+        return normalized
 
 
 class IntelligenceMetrics(StrictModel):

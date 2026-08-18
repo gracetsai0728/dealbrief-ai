@@ -2,6 +2,30 @@ def iso(value):
     return value.isoformat() if value else None
 
 
+def _serialize_company_news(items):
+    normalized_items = []
+    for item in items or []:
+        normalized = dict(item)
+        source_name = str(normalized.get("sourceName") or "")
+        is_mock = (
+            bool(normalized.get("isMock"))
+            or "mock" in source_name.lower()
+            or "synthetic" in source_name.lower()
+        )
+        normalized["sourceType"] = "synthetic" if is_mock else "web"
+        normalized["isMock"] = is_mock
+        if is_mock:
+            normalized["sourceName"] = "DealBrief Synthetic Scenario"
+            normalized["sourceUrl"] = None
+            summary = str(normalized.get("summary") or "").strip()
+            if not summary.lower().startswith("synthetic demo scenario"):
+                normalized["summary"] = (
+                    "Synthetic demo scenario — not real company news. " + summary
+                )
+        normalized_items.append(normalized)
+    return normalized_items
+
+
 def serialize_customer(customer):
     return {
         "id": str(customer.id),
@@ -42,7 +66,7 @@ def serialize_intelligence(snapshot):
         "id": str(snapshot.id),
         "aiKeySignal": snapshot.ai_key_signal,
         "industryDynamics": snapshot.industry_dynamics or [],
-        "companyNews": snapshot.company_news or [],
+        "companyNews": _serialize_company_news(snapshot.company_news),
         "recommendedNextSteps": {
             "crossSell": next_steps.get("crossSell", []),
             "upsell": next_steps.get("upsell", []),

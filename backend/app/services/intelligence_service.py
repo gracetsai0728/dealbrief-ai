@@ -1,13 +1,20 @@
 from datetime import date, datetime, time, timedelta, timezone
 from uuid import uuid4
 
+from flask import current_app
 from sqlalchemy import or_
 
 from ..errors import ApiError
 from ..extensions import db
 from ..models import IntelligenceSnapshot, Subscription
 from .brief_service import find_customer
+from .company_news_service import normalize_news_mode, resolve_company_news
 from .openai_service import generate_structured_intelligence
+from .recommendation_priority import (
+    apply_recommendation_priorities,
+    load_priority_decisions,
+    serialize_priority_guidance,
+)
 
 
 def _iso(value):
@@ -84,8 +91,29 @@ def refresh_intelligence(customer_reference, payload=None):
             409,
         )
 
+    priority_decisions = load_priority_decisions(customer.id, period_end.date())
+    context["priorityGuidance"] = serialize_priority_guidance(priority_decisions)
+    context["newsMode"] = normalize_news_mode(
+        current_app.config.get("INTELLIGENCE_NEWS_MODE")
+    )
     generated = generate_structured_intelligence(context)
     content = generated["content"]
+    content["recommendedNextSteps"] = apply_recommendation_priorities(
+        content["recommendedNextSteps"],
+        priority_decisions,
+    )
+    subscriptions = (
+        Subscription.query.filter_by(customer_id=customer.id)
+        .order_by(Subscription.subscription_start_date.desc())
+        .all()
+    )
+    content["companyNews"] = resolve_company_news(
+        context["newsMode"],
+        content.get("companyNews"),
+        customer,
+        subscriptions,
+        period_end.date(),
+    )
     generated_at = datetime.now(timezone.utc)
 
     snapshot = IntelligenceSnapshot(
